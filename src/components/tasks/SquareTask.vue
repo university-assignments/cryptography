@@ -93,21 +93,75 @@ const decryptBlocks = computed(() =>
 
 	return null;
 });
-const decryptRoutes = computed(() =>
+interface DecryptResult
 {
-	if (!decryptBlocks.value || decryptBlocks.value.error) return [];
+	label: string;
+	output: string;
+}
 
-	return squares.value.map((square, index) => ({
-		index,
-		square,
-		routes: ROUTE_MODES.map((mode) => applyRoute(decryptBlocks.value!.blocks, square, mode.id)),
-	}));
+interface DecryptStep
+{
+	label: string;
+	grids: string[][][];
+	results: DecryptResult[];
+}
+
+/*
+ * Порядок как в тетради: шифртекст в квадрат по строкам → результат для каждого A,
+ * затем по столбцам; затем буквы по номерам клеток каждого A → чтение по строкам и по столбцам.
+ */
+const decryptSteps = computed<DecryptStep[]>(() =>
+{
+	if (!decryptBlocks.value || decryptBlocks.value.error || squares.value.length === 0) return [];
+
+	const { blocks } = decryptBlocks.value;
+	const run = (square: Square, mode: RouteMode): RouteResult => applyRoute(blocks, square, mode);
+	const steps: DecryptStep[] = [];
+
+	for (const [ mode, label ] of [[ 'rows-numbers', 'шифртекст записан в квадрат по строкам' ], [ 'cols-numbers', 'шифртекст записан в квадрат по столбцам' ]] as const)
+	{
+		const routes = squares.value.map((square) => run(square, mode));
+
+		steps.push({
+			label,
+			grids: routes[0]!.blocks.map((block) => block.grid),
+			results: routes.map((route, i) => ({ label: `A${sub(i + 1)}`, output: route.output })),
+		});
+	}
+
+	squares.value.forEach((square, i) =>
+	{
+		const byRows = run(square, 'numbers-rows');
+		const byCols = run(square, 'numbers-cols');
+
+		steps.push({
+			label: `буквы по номерам клеток A${sub(i + 1)}`,
+			grids: byRows.blocks.map((block) => block.grid),
+			results: [
+				{ label: 'по строкам', output: byRows.output },
+				{ label: 'по столбцам', output: byCols.output },
+			],
+		});
+	});
+
+	return steps;
 });
 
-/* Вариант расшифровки, который совпал с известной фразой, — он и есть ответ. */
-const readable = computed(() => decryptRoutes.value.
-	flatMap((entry) => entry.routes.map((route) => route.output)).
-	find((output) => translatePhrase(output) !== undefined));
+/* Шаг, где расшифровка совпала с известной фразой: дальше пробовать не нужно. */
+const readableStep = computed(() => decryptSteps.value.findIndex((step) => step.results.some((result) => translatePhrase(result.output) !== undefined)));
+const readable = computed(() => decryptSteps.value[readableStep.value]?.results.find((result) => translatePhrase(result.output) !== undefined)?.output);
+const shownSteps = computed(() =>
+{
+	if (readableStep.value < 0) return decryptSteps.value;
+
+	return decryptSteps.value.slice(0, readableStep.value + 1);
+});
+const hiddenSteps = computed(() =>
+{
+	if (readableStep.value < 0) return [];
+
+	return decryptSteps.value.slice(readableStep.value + 1);
+});
 
 function lineEquation (step: SingleStep): string
 {
@@ -366,44 +420,74 @@ const givens = computed(() =>
 					<p class="seq">
 						Y = {{ decryptBlocks.blocks.join(' ') }}
 					</p>
+					<div
+						v-for="(step, i) in shownSteps"
+						:key="i"
+						class="space-y-1"
+					>
+						<p class="note">
+							{{ step.label }}
+						</p>
+						<div class="flex flex-wrap items-center gap-6">
+							<GridView
+								v-for="(cells, b) in step.grids"
+								:key="b"
+								:cells="cells"
+								plain
+							/>
+							<div class="space-y-1">
+								<p
+									v-for="result in step.results"
+									:key="result.label"
+									class="seq"
+								>
+									<span class="note mr-2">{{ result.label }}</span>{{ result.output }}
+								</p>
+							</div>
+						</div>
+					</div>
+					<details
+						v-if="hiddenSteps.length"
+						class="rounded-lg border border-dashed border-stone-300 dark:border-stone-700"
+					>
+						<summary class="note cursor-pointer px-3 py-2 not-italic">
+							остальные способы — уже не нужны
+						</summary>
+						<div class="space-y-3 border-t border-dashed border-stone-300 px-3 py-3 dark:border-stone-700">
+							<div
+								v-for="(step, i) in hiddenSteps"
+								:key="i"
+								class="space-y-1"
+							>
+								<p class="note">
+									{{ step.label }}
+								</p>
+								<div class="flex flex-wrap items-center gap-6">
+									<GridView
+										v-for="(cells, b) in step.grids"
+										:key="b"
+										:cells="cells"
+										plain
+									/>
+									<div class="space-y-1">
+										<p
+											v-for="result in step.results"
+											:key="result.label"
+											class="seq"
+										>
+											<span class="note mr-2">{{ result.label }}</span>{{ result.output }}
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</details>
 					<template v-if="readable">
 						<p class="answer">
 							X = {{ readable }}
 						</p>
 						<TranslationLine :text="readable" />
 					</template>
-					<div
-						v-for="entry in decryptRoutes"
-						:key="entry.index"
-						class="space-y-3"
-					>
-						<p class="seq font-semibold">
-							A{{ sub(entry.index + 1) }}
-						</p>
-						<div class="grid gap-4 sm:grid-cols-2">
-							<div
-								v-for="route in entry.routes"
-								:key="route.mode"
-								class="space-y-1"
-							>
-								<p class="note">
-									{{ modeLabel(route.mode) }}
-								</p>
-								<div class="flex flex-wrap items-center gap-4">
-									<GridView
-										v-for="(block, b) in route.blocks"
-										:key="b"
-										:cells="block.grid"
-								plain
-									/>
-									<span
-										class="seq"
-										:class="translatePhrase(route.output) ? 'answer' : ''"
-									>X = {{ route.output }}</span>
-								</div>
-							</div>
-						</div>
-					</div>
 				</StepCard>
 			</template>
 		</template>
