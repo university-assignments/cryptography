@@ -35,6 +35,7 @@ const submit = (): void =>
 					for="name"
 					class="label"
 				>Ваше имя</label>
+				<!-- id="name" ищет тег GTM «JS - Ввод имени» (событие login в GA4) -->
 				<input
 					id="name"
 					v-model="draft"
