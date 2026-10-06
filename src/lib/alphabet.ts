@@ -38,6 +38,14 @@ export function isAlphabetId (value: string): value is AlphabetId
 	return value in ALPHABETS;
 }
 
+/** Название алфавита в формулировке условия: «для латинского алфавита». */
+export function alphabetGenitive (alphabet: Alphabet): string
+{
+	if (alphabet.id === 'lat') return 'латинского';
+
+	return 'русского';
+}
+
 /** Верхний регистр и только буквы алфавита; остальное (пробелы, знаки) выбрасывается. */
 export function normalize (text: string, alphabet: Alphabet): string
 {

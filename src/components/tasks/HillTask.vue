@@ -9,10 +9,16 @@ import ResetButton from '@/components/ResetButton.vue';
 import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
+import TaskStatement from '@/components/TaskStatement.vue';
 import VectorView from '@/components/VectorView.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
-import { ALPHABET_LIST, ALPHABETS, isAlphabetId } from '@/lib/alphabet';
+import {
+	ALPHABET_LIST,
+	ALPHABETS,
+	alphabetGenitive,
+	isAlphabetId,
+} from '@/lib/alphabet';
 import { rowExpression } from '@/lib/format';
 import { type HillBlock, hillDecrypt, hillEncrypt } from '@/lib/hill';
 import { modMatrix, parseMatrix, parseVector } from '@/lib/matrix';
@@ -159,7 +165,22 @@ function blockTitle (block: HillBlock): string
 		</p>
 
 		<template v-else>
-			<StepCard title="Условие">
+			<TaskStatement>
+				Задан шифр Хилла с ключом
+				A = <MatrixView :rows="params.a" />,
+				B = <VectorView :values="params.b" />
+				для {{ alphabetGenitive(alphabet) }} алфавита.
+				<span
+					v-if="text.trim()"
+					class="block"
+				>а) Зашифровать {{ text }}</span>
+				<span
+					v-if="cipher.trim()"
+					class="block"
+				>b) Расшифровать {{ cipher }}</span>
+			</TaskStatement>
+
+			<StepCard>
 				<div class="flex flex-wrap items-center gap-6 text-sm">
 					<RingName :alphabet="alphabet" />
 					<span class="inline-flex items-center gap-2">A = <MatrixView :rows="params.a" /></span>

@@ -5,9 +5,9 @@ import FieldText from '@/components/FieldText.vue';
 import GridEditor from '@/components/GridEditor.vue';
 import GridView from '@/components/GridView.vue';
 import MatrixView from '@/components/MatrixView.vue';
-import PermutationView from '@/components/PermutationView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
+import TaskStatement from '@/components/TaskStatement.vue';
 import TexMath from '@/components/TexMath.vue';
 import { useName } from '@/composables/useName';
 import { useQueryParam } from '@/composables/useQueryParam';
@@ -16,13 +16,13 @@ import { sub } from '@/lib/format';
 import { pick } from '@/lib/hash';
 import {
 	type PairEquation,
+	type RouteMode,
 	type RouteResult,
 	type SingleStep,
 	type Square,
 	analyze,
 	applyRoute,
 	cellName,
-	invertPermutation,
 	parseGrid,
 	prepareRouteText,
 	ROUTE_MODES,
@@ -71,13 +71,18 @@ const encryptBlocks = computed(() =>
 
 	return null;
 });
+
+/* Способ обхода для а) тоже выбирается по имени — у разных людей разные решения. */
+const primaryMode = computed(() => pick(Math.floor(seed.value / 2), ROUTE_MODES.length));
 const encryptRoutes = computed<RouteResult[]>(() =>
 {
 	const square = squares.value[chosen.value];
 
 	if (!square || !encryptBlocks.value || encryptBlocks.value.error) return [];
 
-	return ROUTE_MODES.map((mode) => applyRoute(encryptBlocks.value!.blocks, square, mode.id));
+	const order = [ primaryMode.value, ...ROUTE_MODES.keys() ].filter((v, i, all) => all.indexOf(v) === i);
+
+	return order.map((index) => applyRoute(encryptBlocks.value!.blocks, square, ROUTE_MODES[index]!.id));
 });
 
 const decryptBlocks = computed(() =>
@@ -121,10 +126,25 @@ function padTail (prepared: { blocks: string[]; padCount: number }): string
 	return chars.slice(chars.length - prepared.padCount).join('');
 }
 
-function modeLabel (id: string): string
+function modeLabel (id: RouteMode): string
 {
 	return ROUTE_MODES.find((mode) => mode.id === id)?.label ?? id;
 }
+
+/* Известные клетки для формулировки условия: «a₁₁ = 12, a₁₂ = 6, …». */
+const givens = computed(() =>
+{
+	if (!grid.value) return '';
+
+	const items: string[] = [];
+
+	grid.value.forEach((row, r) => row.forEach((value, c) =>
+	{
+		if (value !== null) items.push(`${cellName([ r, c ])} = ${value}`);
+	}));
+
+	return items.join(', ');
+});
 </script>
 
 <template>
@@ -165,6 +185,20 @@ function modeLabel (id: string): string
 				<ResetButton :keys="KEYS" />
 			</div>
 		</section>
+
+		<TaskStatement>
+			Ключом в перестановочном шифре является магический квадрат A размера {{ n }} × {{ n }}, в котором {{ givens }}.
+			Найти все возможные значения ключа.
+			<span
+				v-if="text.trim()"
+				class="block"
+			>а) зашифровать {{ text }}</span>
+			<span
+				v-if="cipher.trim()"
+				class="block"
+			>в) расшифровать {{ cipher }}</span>
+			<span class="block">Найти перестановку, являющуюся ключом данного шифра.</span>
+		</TaskStatement>
 
 		<p
 			v-if="!grid"
@@ -240,17 +274,13 @@ function modeLabel (id: string): string
 					</p>
 					<div
 						v-else
-						class="space-y-2"
+						class="flex flex-wrap gap-6"
 					>
-						<div class="flex flex-wrap gap-6">
-							<div
-								v-for="(square, i) in squares"
-								:key="i"
-								class="space-y-1"
-							>
-								<span class="inline-flex items-center gap-2 text-sm">A{{ sub(i + 1) }} = <MatrixView :rows="square" /></span>
-							</div>
-						</div>
+						<span
+							v-for="(square, i) in squares"
+							:key="i"
+							class="inline-flex items-center gap-2 text-sm"
+						>A{{ sub(i + 1) }} = <MatrixView :rows="square" /></span>
 					</div>
 				</template>
 			</StepCard>
@@ -266,43 +296,50 @@ function modeLabel (id: string): string
 					v-else
 					:title="`а) Зашифровать (A${sub(chosen + 1)})`"
 				>
-					<p
-						v-if="squares.length > 1"
-						class="note"
-					>
-						квадрат A{{ sub(chosen + 1) }} выбран по вашему имени
+					<p class="note">
+						квадрат и способ обхода выбраны по вашему имени
 					</p>
 					<p class="seq">
 						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
 					</p>
-					<details
-						v-for="route in encryptRoutes"
-						:key="route.mode"
-						class="group rounded-lg border border-stone-200 dark:border-stone-800"
-						open
+					<div
+						v-for="(route, index) in encryptRoutes.slice(0, 1)"
+						:key="index"
+						class="space-y-3"
 					>
-						<summary class="cursor-pointer px-3 py-2 text-sm">
-							<span class="note">{{ modeLabel(route.mode) }}</span>
-							<span class="answer mt-1 block">Y = {{ route.output }}</span>
+						<div class="flex flex-wrap items-center gap-6">
+							<GridView
+								v-for="(block, b) in route.blocks"
+								:key="b"
+								:cells="block.grid"
+								plain
+							/>
+							<span class="answer">Y = {{ route.output }}</span>
+						</div>
+					</div>
+					<details class="rounded-lg border border-dashed border-stone-300 dark:border-stone-700">
+						<summary class="note cursor-pointer px-3 py-2 not-italic">
+							другие способы обхода
 						</summary>
-						<div class="space-y-3 border-t border-stone-200 px-3 py-3 dark:border-stone-800">
-							<div class="flex flex-wrap gap-4">
-								<div
-									v-for="(block, i) in route.blocks"
-									:key="i"
-									class="space-y-2"
-								>
-									<div class="flex items-center gap-3">
-										<GridView :cells="squares[chosen]!" compact />
-										<GridView :cells="block.grid" />
-									</div>
-									<p class="seq">→ {{ block.output }}</p>
+						<div class="space-y-4 border-t border-dashed border-stone-300 px-3 py-3 dark:border-stone-700">
+							<div
+								v-for="route in encryptRoutes.slice(1)"
+								:key="route.mode"
+								class="space-y-2"
+							>
+								<p class="note">
+									{{ modeLabel(route.mode) }}
+								</p>
+								<div class="flex flex-wrap items-center gap-6">
+									<GridView
+										v-for="(block, b) in route.blocks"
+										:key="b"
+										:cells="block.grid"
+								plain
+									/>
+									<span class="seq">Y = {{ route.output }}</span>
 								</div>
 							</div>
-							<PermutationView
-								:perm="route.perm"
-								label="Перестановка — ключ шифра: буква позиции «берём» встаёт на позицию «позиция»"
-							/>
 						</div>
 					</details>
 				</StepCard>
@@ -317,55 +354,39 @@ function modeLabel (id: string): string
 				</p>
 				<StepCard
 					v-else
-					title="в) Расшифровать: все квадраты и способы обхода"
+					title="в) Расшифровать"
 				>
 					<p class="seq">
 						Y = {{ decryptBlocks.blocks.join(' ') }}
 					</p>
-					<p class="note">
-						осмысленный текст даёт один из вариантов ниже — его и переписывают
-					</p>
 					<div
 						v-for="entry in decryptRoutes"
 						:key="entry.index"
-						class="space-y-2"
+						class="space-y-3"
 					>
 						<p class="seq font-semibold">
 							A{{ sub(entry.index + 1) }}
 						</p>
-						<details
-							v-for="route in entry.routes"
-							:key="route.mode"
-							class="rounded-lg border border-stone-200 dark:border-stone-800"
-						>
-							<summary class="cursor-pointer px-3 py-2 text-sm">
-								<span class="note">{{ modeLabel(route.mode) }}</span>
-								<span class="answer mt-1 block">X = {{ route.output }}</span>
-							</summary>
-							<div class="space-y-3 border-t border-stone-200 px-3 py-3 dark:border-stone-800">
-								<div class="flex flex-wrap gap-4">
-									<div
-										v-for="(block, i) in route.blocks"
-										:key="i"
-										class="space-y-2"
-									>
-										<div class="flex items-center gap-3">
-											<GridView :cells="entry.square" compact />
-											<GridView :cells="block.grid" />
-										</div>
-										<p class="seq">→ {{ block.output }}</p>
-									</div>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div
+								v-for="route in entry.routes"
+								:key="route.mode"
+								class="space-y-1"
+							>
+								<p class="note">
+									{{ modeLabel(route.mode) }}
+								</p>
+								<div class="flex flex-wrap items-center gap-4">
+									<GridView
+										v-for="(block, b) in route.blocks"
+										:key="b"
+										:cells="block.grid"
+								plain
+									/>
+									<span class="seq">X = {{ route.output }}</span>
 								</div>
-								<PermutationView
-									:perm="route.perm"
-									label="Применённая перестановка σ (расшифрование)"
-								/>
-								<PermutationView
-									:perm="invertPermutation(route.perm)"
-									label="Ключ шифра π = σ⁻¹ (так текст был зашифрован)"
-								/>
 							</div>
-						</details>
+						</div>
 					</div>
 				</StepCard>
 			</template>
