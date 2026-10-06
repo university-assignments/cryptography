@@ -2,10 +2,11 @@
 import { computed, ref } from 'vue';
 import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
-import GridView from '@/components/GridView.vue';
+import MatrixView from '@/components/MatrixView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
+import TranslationLine from '@/components/TranslationLine.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
 import { ALPHABETS, isAlphabetId } from '@/lib/alphabet';
@@ -46,14 +47,23 @@ const encrypted = computed(() =>
 });
 
 const hovered = ref<PlayfairPair | null>(null);
+const selected = ref<PlayfairPair | null>(null);
+const active = computed(() => hovered.value ?? selected.value);
+
+const toggle = (pair: PlayfairPair): void =>
+{
+	selected.value = selected.value === pair
+		? null
+		: pair;
+};
 
 function highlight (result: PlayfairResult): Set<string>
 {
 	const keys = new Set<string>();
 
-	if (!hovered.value) return keys;
+	if (!active.value) return keys;
 
-	for (const ch of hovered.value.input + hovered.value.output)
+	for (const ch of active.value.input + active.value.output)
 	{
 		result.table.table.forEach((row, r) =>
 		{
@@ -143,24 +153,31 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 				v-else-if="result"
 				:title="title"
 			>
+				<p class="seq">
+					K = {{ result.table.key }}
+				</p>
+				<p
+					v-if="mode === 'decrypt'"
+					class="seq"
+				>
+					Y = {{ result.source }}
+				</p>
 				<div class="flex flex-wrap items-start gap-6">
 					<div class="space-y-1">
-						<p class="seq">
-							K = {{ result.table.key }}
-						</p>
-						<GridView
-							:cells="result.table.table"
+						<span class="inline-flex items-center gap-2 text-sm">K = <MatrixView
+							:rows="result.table.table"
 							:highlight="highlight(result)"
-						/>
+						/></span>
 					</div>
 					<ul class="seq space-y-0.5">
 						<li
 							v-for="(pair, i) in result.pairs"
 							:key="i"
-							class="cursor-default rounded px-1 hover:bg-stone-100 dark:hover:bg-stone-800"
+							class="cursor-pointer rounded px-1"
+							:class="active === pair ? 'bg-amber-100 dark:bg-amber-900/50' : ''"
 							@mouseenter="hovered = pair"
 							@mouseleave="hovered = null"
-							@click="hovered = hovered === pair ? null : pair"
+							@click="toggle(pair)"
 						>
 							{{ pair.input }} → <span class="font-semibold">{{ pair.output }}</span>
 							<span class="note ml-2">{{ PAIR_RULE_LABELS[pair.rule] }}, {{ direction(mode, pair.rule) }}</span>
@@ -176,6 +193,10 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 				<p class="answer">
 					{{ mode === 'decrypt' ? 'X' : 'Y' }} = {{ result.result }}
 				</p>
+				<TranslationLine
+					v-if="mode === 'decrypt'"
+					:text="result.result"
+				/>
 			</StepCard>
 		</template>
 	</div>
