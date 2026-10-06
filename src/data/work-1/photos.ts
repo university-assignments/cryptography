@@ -5,11 +5,22 @@ export interface Photo
 	width: number;
 	height: number;
 	caption: string;
+
+	/** Предупреждение поверх фото: в тетради ошибка, правильное решение — на сайте. */
+	note?: PhotoNote;
+}
+
+export interface PhotoNote
+{
+	text: string;
+
+	/** Маршрут страницы с правильным решением. */
+	to: string;
 }
 
 const BASE = `${import.meta.env.BASE_URL}photos/work-1`;
 
-function photo (variant: number, file: string, width: number, height: number, caption: string): Photo
+function photo (variant: number, file: string, width: number, height: number, caption: string, note?: PhotoNote): Photo
 {
 	return {
 		src: `${BASE}/v${variant}/${file}.webp`,
@@ -17,6 +28,7 @@ function photo (variant: number, file: string, width: number, height: number, ca
 		width,
 		height,
 		caption,
+		note,
 	};
 }
 
@@ -53,7 +65,10 @@ const PHOTOS: Record<number, Photo[]> = {
 		photo(4, 'p1', 960, 1280, 'Тетрадь, стр. 1'),
 		photo(4, 'p2', 960, 1280, 'Тетрадь, стр. 2'),
 		photo(4, 'p3', 960, 1280, 'Тетрадь, стр. 3'),
-		photo(4, 'p4', 960, 1280, 'Тетрадь, стр. 4'),
+		photo(4, 'p4', 960, 1280, 'Тетрадь, стр. 4', {
+			text: 'Задание 3 а) здесь решено неверно: вместо сложения y = x + k сделано вычитание (12 + 7 = 19, а не 5). Пункт б) верный.',
+			to: '/work/1/variant/4/task/3',
+		}),
 		photo(4, 'p5', 960, 1280, 'Тетрадь, стр. 5'),
 	],
 	5: [
