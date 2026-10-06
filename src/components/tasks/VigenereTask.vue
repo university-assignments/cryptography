@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import ColumnSum from '@/components/ColumnSum.vue';
 import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import RingName from '@/components/RingName.vue';
-import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
@@ -56,24 +56,9 @@ const decrypted = computed(() =>
 	return null;
 });
 
-interface Row
+function keyLetters (result: VigenereResult): string
 {
-	label: string;
-	letters: string[];
-	values: number[];
-	tail?: number;
-}
-
-function rows (result: VigenereResult, mode: 'encrypt' | 'decrypt'): Row[]
-{
-	const keyLetters = result.k.map((v) => alphabet.value.letters[v]!);
-	const x = { label: 'x', letters: [ ...result.text ], values: result.x };
-	const k = { label: 'k', letters: keyLetters, values: result.k, tail: result.key.length };
-	const y = { label: 'y', letters: [ ...result.cipher ], values: result.y };
-
-	return mode === 'encrypt'
-		? [ x, k, y ]
-		: [ y, k, x ];
+	return result.k.map((v) => alphabet.value.letters[v]!).join('');
 }
 </script>
 
@@ -124,63 +109,52 @@ function rows (result: VigenereResult, mode: 'encrypt' | 'decrypt'): Row[]
 			>b) расшифровать {{ cipher }}</span>
 		</TaskStatement>
 
-		<template
-			v-for="[title, result, mode, formula] in [
-				['а) Зашифровать', encrypted, 'encrypt', 'y = x + k'],
-				['б) Расшифровать', decrypted, 'decrypt', 'x = y − k'],
-			] as const"
-			:key="title"
-		>
+		<StepCard>
+			<p class="seq flex items-center gap-6">
+				<span>K = {{ key.toUpperCase() }}</span>
+				<RingName :alphabet="alphabet" />
+			</p>
+		</StepCard>
+
+		<template v-if="encrypted">
 			<p
-				v-if="result && !result.ok"
+				v-if="!encrypted.ok"
 				class="error"
 			>
-				{{ result.error }}
+				{{ encrypted.error }}
 			</p>
 			<StepCard
-				v-else-if="result"
-				:title="`${title}: ${formula}`"
+				v-else
+				title="а) Зашифровать: y = x + k"
 			>
-				<p class="seq flex items-center gap-6">
-					<span>K = {{ result.key }}</span>
-					<RingName :alphabet="alphabet" />
-				</p>
-				<p class="note">
-					ключ продолжается {{ feedback === 'plain' ? 'открытым текстом' : 'шифртекстом' }}
-				</p>
-				<div class="overflow-x-auto">
-					<table class="font-mono text-xs">
-						<tbody>
-							<tr
-								v-for="row in rows(result, mode)"
-								:key="row.label"
-								class="border-b border-stone-100 last:border-0 dark:border-stone-800"
-							>
-								<th class="pr-2 text-left font-semibold">
-									{{ row.label }}
-								</th>
-								<td
-									v-for="(value, i) in row.values"
-									:key="i"
-									class="px-1 py-0.5 text-center"
-									:class="row.tail !== undefined && i < row.tail ? 'text-amber-700 dark:text-amber-300' : ''"
-								>
-									<span class="block">{{ row.letters[i] }}</span>
-									<span class="block text-stone-500">{{ value }}</span>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-				<SequenceLine
-					v-for="row in rows(result, mode)"
-					:key="row.label"
-					:label="row.label"
-					:values="row.values"
+				<ColumnSum
+					op="+"
+					:top="{ name: 'X', letters: encrypted.text, values: encrypted.x }"
+					:stream="{ name: 'K', letters: keyLetters(encrypted), values: encrypted.k }"
+					:result="{ name: 'Y', letters: encrypted.cipher, values: encrypted.y }"
+					:keyword="encrypted.key.length"
 				/>
-				<p class="answer">
-					{{ mode === 'encrypt' ? `Y = ${result.cipher}` : `X = ${result.text}` }}
-				</p>
+			</StepCard>
+		</template>
+
+		<template v-if="decrypted">
+			<p
+				v-if="!decrypted.ok"
+				class="error"
+			>
+				{{ decrypted.error }}
+			</p>
+			<StepCard
+				v-else
+				title="б) Расшифровать: x = y − k"
+			>
+				<ColumnSum
+					op="−"
+					:top="{ name: 'Y', letters: decrypted.cipher, values: decrypted.y }"
+					:stream="{ name: 'K', letters: keyLetters(decrypted), values: decrypted.k }"
+					:result="{ name: 'X', letters: decrypted.text, values: decrypted.x }"
+					:keyword="decrypted.key.length"
+				/>
 			</StepCard>
 		</template>
 	</div>
