@@ -170,6 +170,9 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 						/></span>
 					</div>
 					<ul class="seq space-y-0.5">
+						<li class="note pb-1 font-sans">
+							наведите или нажмите на пару — буквы подсветятся в матрице
+						</li>
 						<li
 							v-for="(pair, i) in result.pairs"
 							:key="i"
