@@ -1,24 +1,13 @@
 import { ref } from 'vue';
 import { sendStats } from '@/lib/stats';
+import { readStored, writeStored } from '@/lib/storage';
 
 const STORAGE_KEY = 'id';
 
 /* id из ссылки — md5 от имени (32 hex-символа). */
 const ID_PATTERN = /^[0-9a-f]{32}$/u;
 
-function readStored (): string
-{
-	try
-	{
-		return localStorage.getItem(STORAGE_KEY) ?? '';
-	}
-	catch
-	{
-		return '';
-	}
-}
-
-const id = ref(readStored());
+const id = ref(readStored(STORAGE_KEY));
 
 export function useId ()
 {
@@ -36,14 +25,5 @@ export function captureId (raw: unknown, name: string): void
 
 	sendStats({ type: 'id', name, oldId: id.value, newId: next });
 	id.value = next;
-
-	try
-	{
-		localStorage.setItem(STORAGE_KEY, next);
-	}
-	catch
-	{
-
-		/* приватный режим — id живёт до перезагрузки */
-	}
+	writeStored(STORAGE_KEY, next);
 }

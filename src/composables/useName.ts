@@ -1,24 +1,13 @@
 import { computed, ref } from 'vue';
 import { nameSeed } from '@/lib/hash';
 import { sendStats } from '@/lib/stats';
+import { readStored, writeStored } from '@/lib/storage';
 import { useId } from './useId';
 
-/* Ключ читает GTM (переменная «JS - Имя пользователя» → user_name в GA4): переименуешь — поправь контейнер. */
+/* localStorage['cryptography:name'] читает GTM (переменная «JS - Имя пользователя» → user_name в GA4): переименуешь — поправь контейнер. */
 const STORAGE_KEY = 'name';
 
-function readStored (): string
-{
-	try
-	{
-		return localStorage.getItem(STORAGE_KEY) ?? '';
-	}
-	catch
-	{
-		return '';
-	}
-}
-
-const name = ref(readStored());
+const name = ref(readStored(STORAGE_KEY));
 
 /* Последнее непустое имя: при смене имени через кнопку оно сначала очищается. */
 let lastName = name.value;
@@ -39,17 +28,7 @@ export function useName ()
 		}
 
 		name.value = next;
-
-		try
-		{
-			if (name.value) localStorage.setItem(STORAGE_KEY, name.value);
-			else localStorage.removeItem(STORAGE_KEY);
-		}
-		catch
-		{
-
-			/* приватный режим — имя живёт до перезагрузки */
-		}
+		writeStored(STORAGE_KEY, next);
 	};
 
 	return { name, seed, hasName, setName };
