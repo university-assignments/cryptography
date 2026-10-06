@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { nameSeed } from '@/lib/hash';
 
+/* Ключ читает GTM (переменная «JS - Имя пользователя» → user_name в GA4): переименуешь — поправь контейнер. */
 const STORAGE_KEY = 'name';
 
 function readStored (): string
