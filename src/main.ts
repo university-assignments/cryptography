@@ -2,9 +2,13 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import { captureId, useId } from './composables/useId';
 import { useName } from './composables/useName';
+import { browserId } from './lib/browser-id';
 import { installTracking } from './lib/tracking';
 import router from './router';
 import './style.css';
+
+/* ID браузера выдаётся в момент первого захода, а не при первом событии статистики. */
+browserId();
 
 const { name } = useName();
 const { id } = useId();

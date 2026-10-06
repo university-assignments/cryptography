@@ -1,4 +1,5 @@
 import { STATS_URL } from '@/config';
+import { browserId } from './browser-id';
 
 export interface ViewEvent
 {
@@ -40,7 +41,7 @@ export function sendStats (event: StatsEvent): void
 {
 	if (!STATS_URL) return;
 
-	const body = JSON.stringify({ ...event, ts: new Date().toISOString() });
+	const body = JSON.stringify({ ...event, browser: browserId(), ts: new Date().toISOString() });
 
 	try
 	{
