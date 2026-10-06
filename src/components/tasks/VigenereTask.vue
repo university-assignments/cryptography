@@ -6,9 +6,15 @@ import ResetButton from '@/components/ResetButton.vue';
 import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
+import TaskStatement from '@/components/TaskStatement.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
-import { ALPHABET_LIST, ALPHABETS, isAlphabetId } from '@/lib/alphabet';
+import {
+	ALPHABET_LIST,
+	ALPHABETS,
+	alphabetGenitive,
+	isAlphabetId,
+} from '@/lib/alphabet';
 import {
 	type Feedback,
 	type VigenereResult,
@@ -105,6 +111,18 @@ function rows (result: VigenereResult, mode: 'encrypt' | 'decrypt'): Row[]
 				<ResetButton :keys="KEYS" />
 			</div>
 		</section>
+
+		<TaskStatement>
+			Используется шифр Виженера с обратной связью для {{ alphabetGenitive(alphabet) }} алфавита с ключевым словом K={{ key.toUpperCase() }}
+			<span
+				v-if="text.trim()"
+				class="block"
+			>а) зашифровать {{ text }}</span>
+			<span
+				v-if="cipher.trim()"
+				class="block"
+			>b) расшифровать {{ cipher }}</span>
+		</TaskStatement>
 
 		<template
 			v-for="[title, result, mode, formula] in [

@@ -5,6 +5,7 @@ import FieldText from '@/components/FieldText.vue';
 import GridView from '@/components/GridView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
+import TaskStatement from '@/components/TaskStatement.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
 import { ALPHABETS, isAlphabetId } from '@/lib/alphabet';
@@ -112,6 +113,18 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 				<ResetButton :keys="KEYS" />
 			</div>
 		</section>
+
+		<TaskStatement>
+			Ключом в шифре Плейфера является слово K={{ key.toUpperCase() }}
+			<span
+				v-if="cipher.trim()"
+				class="block"
+			>Расшифровать Y={{ cipher }}</span>
+			<span
+				v-if="text.trim()"
+				class="block"
+			>Зашифровать X={{ text }}</span>
+		</TaskStatement>
 
 		<template
 			v-for="[title, result, mode] in [

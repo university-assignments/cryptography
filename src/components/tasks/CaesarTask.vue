@@ -5,9 +5,15 @@ import FieldText from '@/components/FieldText.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
+import TaskStatement from '@/components/TaskStatement.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
-import { ALPHABET_LIST, ALPHABETS, isAlphabetId } from '@/lib/alphabet';
+import {
+	ALPHABET_LIST,
+	ALPHABETS,
+	alphabetGenitive,
+	isAlphabetId,
+} from '@/lib/alphabet';
 import { caesarShift, caesarTable } from '@/lib/caesar';
 
 const props = defineProps<{ preset?: VariantPreset }>();
@@ -90,6 +96,11 @@ const choose = (index: number): void =>
 				<ResetButton :keys="KEYS" />
 			</div>
 		</section>
+
+		<TaskStatement>
+			Используется шифр Цезаря для {{ alphabetGenitive(alphabet) }} алфавита. Найти ключ и расшифровать сообщение
+			<span class="block">Y={{ cipher }}</span>
+		</TaskStatement>
 
 		<template v-if="table">
 			<p

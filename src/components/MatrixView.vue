@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+/* Пустая клетка (null) подписывается своим именем a₁₃, как на практике. */
 defineProps<{ rows: (number | null)[][] }>();
 </script>
 
@@ -13,11 +15,19 @@ defineProps<{ rows: (number | null)[][] }>();
 				v-for="(row, r) in rows"
 				:key="r"
 			>
-				<span
+				<template
 					v-for="(value, c) in row"
 					:key="c"
-					class="text-right"
-				>{{ value ?? '·' }}</span>
+				>
+					<span
+						v-if="value === null"
+						class="text-right font-sans"
+					>a<sub>{{ r + 1 }}{{ c + 1 }}</sub></span>
+					<span
+						v-else
+						class="text-right"
+					>{{ value }}</span>
+				</template>
 			</template>
 		</span>
 		<span class="w-1.5 rounded-r border-y border-r border-current" />
