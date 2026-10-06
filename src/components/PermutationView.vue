@@ -16,7 +16,7 @@ const bottom = computed(() => props.perm.map((source) => source + 1));
 	<div class="overflow-x-auto">
 		<p
 			v-if="label"
-			class="hint mb-1"
+			class="note mb-1"
 		>
 			{{ label }}
 		</p>

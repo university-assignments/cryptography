@@ -100,15 +100,15 @@ const choose = (index: number): void =>
 			</p>
 			<StepCard
 				v-else
-				:title="`Перебор ключей: x = y − k (mod ${m})`"
+				:title="`Перебор ключей: x = y − k`"
 			>
 				<SequenceLine
 					label="y"
 					:values="table.y"
 					:letters="table.cipher"
 				/>
-				<p class="hint">
-					Нажмите на строку с осмысленным словом — она станет ответом.
+				<p class="note">
+					нажмите на строку с осмысленным словом — она станет ответом
 				</p>
 				<div class="overflow-x-auto">
 					<table class="w-full font-mono text-sm">
@@ -144,7 +144,7 @@ const choose = (index: number): void =>
 
 		<StepCard
 			v-if="encrypted"
-			:title="`Зашифровать: y = x + ${k} (mod ${m})`"
+			:title="`Зашифровать: y = x + ${k}`"
 		>
 			<SequenceLine
 				label="x"

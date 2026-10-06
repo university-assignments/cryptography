@@ -1,3 +1,5 @@
+import { sub } from './format';
+
 export type Cell = number | null;
 export type Grid = Cell[][];
 export type Square = number[][];
@@ -35,7 +37,7 @@ export function emptyGrid (n: number): Grid
 
 export function cellName (pos: Pos): string
 {
-	return `a${pos[0] + 1}${pos[1] + 1}`;
+	return `a${sub(pos[0] + 1)}${sub(pos[1] + 1)}`;
 }
 
 /** «12,6,.,.;13,3,.,.» → сетка; пустые клетки: «.», «_», «-» или пусто. */

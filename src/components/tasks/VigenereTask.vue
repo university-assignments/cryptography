@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
 import ResetButton from '@/components/ResetButton.vue';
+import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
@@ -35,7 +36,6 @@ const feedback = computed<Feedback>(() =>
 
 	return 'plain';
 });
-const m = computed(() => alphabet.value.letters.length);
 
 const encrypted = computed(() =>
 {
@@ -108,8 +108,8 @@ function rows (result: VigenereResult, mode: 'encrypt' | 'decrypt'): Row[]
 
 		<template
 			v-for="[title, result, mode, formula] in [
-				['а) Зашифровать', encrypted, 'encrypt', 'y = x + k (mod m)'],
-				['б) Расшифровать', decrypted, 'decrypt', 'x = y − k (mod m)'],
+				['а) Зашифровать', encrypted, 'encrypt', 'y = x + k'],
+				['б) Расшифровать', decrypted, 'decrypt', 'x = y − k'],
 			] as const"
 			:key="title"
 		>
@@ -121,10 +121,14 @@ function rows (result: VigenereResult, mode: 'encrypt' | 'decrypt'): Row[]
 			</p>
 			<StepCard
 				v-else-if="result"
-				:title="`${title}: ${formula}, m = ${m}`"
+				:title="`${title}: ${formula}`"
 			>
-				<p class="hint">
-					Ключевой поток: K = {{ result.key }}, дальше — {{ feedback === 'plain' ? 'открытый текст' : 'шифртекст' }} с начала.
+				<p class="seq flex items-center gap-6">
+					<span>K = {{ result.key }}</span>
+					<RingName :alphabet="alphabet" />
+				</p>
+				<p class="note">
+					ключ продолжается {{ feedback === 'plain' ? 'открытым текстом' : 'шифртекстом' }}
 				</p>
 				<div class="overflow-x-auto">
 					<table class="font-mono text-xs">

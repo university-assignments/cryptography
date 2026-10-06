@@ -4,12 +4,14 @@ import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
 import GridEditor from '@/components/GridEditor.vue';
 import GridView from '@/components/GridView.vue';
+import MatrixView from '@/components/MatrixView.vue';
 import PermutationView from '@/components/PermutationView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
 import { useName } from '@/composables/useName';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
+import { sub } from '@/lib/format';
 import { pick } from '@/lib/hash';
 import {
 	type PairEquation,
@@ -94,22 +96,33 @@ const decryptRoutes = computed(() =>
 	}));
 });
 
-const sub = (i: number): string => String(i + 1).replace(/\d/gu, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)]!);
-
-function single (step: SingleStep): string
+function lineEquation (step: SingleStep): string
 {
-	const known = step.known.join(' − ');
-
-	return `${step.line.name}: ${cellName(step.cell)} = ${analysis.value?.sum} − ${known} = ${step.value}`;
+	return `${step.line.cells.map(cellName).join(' + ')} = ${analysis.value?.sum}`;
 }
 
-function pair (eq: PairEquation): string
+function pairEquation (eq: PairEquation): string
 {
-	const candidates = eq.candidates.length
-		? eq.candidates.map(([ p, q ]) => `${p}+${q}`).join(', ')
-		: 'нет подходящих пар';
+	return `${cellName(eq.cells[0])} + ${cellName(eq.cells[1])} = ${eq.target}`;
+}
 
-	return `${cellName(eq.cells[0])} + ${cellName(eq.cells[1])} = ${eq.target}: ${candidates}`;
+function pairCandidates (eq: PairEquation): string
+{
+	return eq.candidates.map(([ p, q ]) => `${q}+${p}`).join(', ');
+}
+
+function unpadded (prepared: { blocks: string[]; padCount: number }): string
+{
+	const chars = [ ...prepared.blocks.join('') ];
+
+	return chars.slice(0, chars.length - prepared.padCount).join('');
+}
+
+function padTail (prepared: { blocks: string[]; padCount: number }): string
+{
+	const chars = [ ...prepared.blocks.join('') ];
+
+	return chars.slice(chars.length - prepared.padCount).join('');
 }
 
 function modeLabel (id: string): string
@@ -166,26 +179,24 @@ function modeLabel (id: string): string
 
 		<template v-else-if="analysis">
 			<StepCard title="Достройка магического квадрата">
-				<p class="seq">
-					n = {{ n }}, S = (n² + 1)·n / 2 = ({{ n }}² + 1)·{{ n }} / 2 = {{ analysis.sum }}
-				</p>
-				<div class="flex flex-wrap items-start gap-4">
-					<GridView :cells="grid" />
-					<div class="space-y-1">
-						<p
-							v-for="(step, i) in analysis.singles"
-							:key="i"
-							class="seq"
-						>
-							{{ single(step) }}
-						</p>
-						<p
-							v-if="analysis.singles.length"
-							class="hint"
-						>
-							Линии с одной неизвестной определяются сразу.
-						</p>
-					</div>
+				<div class="flex flex-wrap items-start gap-6">
+					<span class="inline-flex items-center gap-2 text-sm">A = <MatrixView :rows="grid" /></span>
+					<p class="seq">
+						S = (n² + 1)·n / 2 = ({{ n }}² + 1)·{{ n }} / 2 = {{ analysis.sum }}
+					</p>
+				</div>
+				<div
+					v-if="analysis.singles.length"
+					class="space-y-1"
+				>
+					<p
+						v-for="(step, i) in analysis.singles"
+						:key="i"
+						class="seq grid grid-cols-[minmax(0,18rem)_auto] gap-x-6 font-sans"
+					>
+						<span>{{ lineEquation(step) }}</span>
+						<span>{{ cellName(step.cell) }} = {{ step.value }}</span>
+					</p>
 				</div>
 				<p
 					v-if="analysis.error"
@@ -198,15 +209,13 @@ function modeLabel (id: string): string
 						v-if="analysis.pairs.length"
 						class="space-y-1"
 					>
-						<p class="hint">
-							Линии с двумя неизвестными — кандидаты из оставшихся чисел {{ analysis.available.join(', ') }}:
-						</p>
 						<p
 							v-for="(eq, i) in analysis.pairs"
 							:key="i"
-							class="seq"
+							class="seq grid grid-cols-[minmax(0,10rem)_auto] gap-x-6 font-sans"
 						>
-							{{ pair(eq) }}
+							<span>{{ pairEquation(eq) }}</span>
+							<span>{{ pairCandidates(eq) }}</span>
 						</p>
 					</div>
 					<p
@@ -225,22 +234,19 @@ function modeLabel (id: string): string
 						v-else
 						class="space-y-2"
 					>
-						<p class="font-medium">
-							Все возможные значения ключа: {{ squares.length }}
-						</p>
-						<div class="flex flex-wrap gap-4">
+						<div class="flex flex-wrap gap-6">
 							<div
 								v-for="(square, i) in squares"
 								:key="i"
 								class="space-y-1"
 							>
-								<p class="seq font-semibold">
-									A{{ sub(i) }}<span
-										v-if="i === chosen && squares.length > 1"
-										class="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-normal text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
-									>для шифрования — по вашему имени</span>
+								<span class="inline-flex items-center gap-2 text-sm">A{{ sub(i + 1) }} = <MatrixView :rows="square" /></span>
+								<p
+									v-if="i === chosen && squares.length > 1"
+									class="note"
+								>
+									для шифрования в а) — выбран по вашему имени
 								</p>
-								<GridView :cells="square" />
 							</div>
 						</div>
 					</div>
@@ -256,14 +262,10 @@ function modeLabel (id: string): string
 				</p>
 				<StepCard
 					v-else
-					:title="`а) Зашифровать квадратом A${sub(chosen)}`"
+					:title="`а) Зашифровать (A${sub(chosen + 1)})`"
 				>
 					<p class="seq">
-						X = {{ encryptBlocks.blocks.join(' | ') }}
-						<span
-							v-if="encryptBlocks.padCount"
-							class="text-stone-500"
-						>(добивка {{ encryptBlocks.padCount }} зн.)</span>
+						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
 					</p>
 					<details
 						v-for="route in encryptRoutes"
@@ -272,7 +274,7 @@ function modeLabel (id: string): string
 						open
 					>
 						<summary class="cursor-pointer px-3 py-2 text-sm">
-							<span class="font-medium">{{ modeLabel(route.mode) }}</span>
+							<span class="note">{{ modeLabel(route.mode) }}</span>
 							<span class="answer mt-1 block">Y = {{ route.output }}</span>
 						</summary>
 						<div class="space-y-3 border-t border-stone-200 px-3 py-3 dark:border-stone-800">
@@ -309,8 +311,11 @@ function modeLabel (id: string): string
 					v-else
 					title="в) Расшифровать: все квадраты и способы обхода"
 				>
-					<p class="hint">
-						Y = {{ decryptBlocks.blocks.join(' | ') }}. Осмысленный текст выдаёт один из вариантов ниже — его перестановка и есть ключ.
+					<p class="seq">
+						Y = {{ decryptBlocks.blocks.join(' ') }}
+					</p>
+					<p class="note">
+						осмысленный текст даёт один из вариантов ниже — его и переписывают
 					</p>
 					<div
 						v-for="entry in decryptRoutes"
@@ -318,7 +323,7 @@ function modeLabel (id: string): string
 						class="space-y-2"
 					>
 						<p class="seq font-semibold">
-							Квадрат A{{ sub(entry.index) }}
+							A{{ sub(entry.index + 1) }}
 						</p>
 						<details
 							v-for="route in entry.routes"
@@ -326,7 +331,7 @@ function modeLabel (id: string): string
 							class="rounded-lg border border-stone-200 dark:border-stone-800"
 						>
 							<summary class="cursor-pointer px-3 py-2 text-sm">
-								<span class="hint">{{ modeLabel(route.mode) }}</span>
+								<span class="note">{{ modeLabel(route.mode) }}</span>
 								<span class="answer mt-1 block">X = {{ route.output }}</span>
 							</summary>
 							<div class="space-y-3 border-t border-stone-200 px-3 py-3 dark:border-stone-800">

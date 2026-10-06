@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import FieldSelect from '@/components/FieldSelect.vue';
+import ExprColumn from '@/components/ExprColumn.vue';
 import FieldText from '@/components/FieldText.vue';
 import MatrixView from '@/components/MatrixView.vue';
+import ParenGroup from '@/components/ParenGroup.vue';
 import ResetButton from '@/components/ResetButton.vue';
+import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
 import VectorView from '@/components/VectorView.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
 import { ALPHABET_LIST, ALPHABETS, isAlphabetId } from '@/lib/alphabet';
+import { rowExpression } from '@/lib/format';
 import { type HillBlock, hillDecrypt, hillEncrypt } from '@/lib/hill';
-import { parseMatrix, parseVector, type RowProduct } from '@/lib/matrix';
+import { modMatrix, parseMatrix, parseVector } from '@/lib/matrix';
 
 const props = defineProps<{ preset?: VariantPreset }>();
 
@@ -76,13 +80,16 @@ const blockSize = computed(() =>
 	return params.value.a.length;
 });
 
-function arithmetic (row: RowProduct): string
+function encryptRows (block: HillBlock, b: number[]): string[]
 {
-	const products = row.terms.map(([ coef, value ]) => `${coef}·${value}`).join(' + ');
+	return block.product.rows.map((row, r) =>
+	{
+		const expression = rowExpression(row);
 
-	return row.sum === row.result
-		? `${products} = ${row.result}`
-		: `${products} = ${row.sum} ≡ ${row.result} (mod ${m.value})`;
+		if (!b[r]) return expression;
+
+		return `${expression} + ${b[r]}`;
+	});
 }
 
 function tuple (values: number[]): string
@@ -153,8 +160,8 @@ function blockTitle (block: HillBlock): string
 
 		<template v-else>
 			<StepCard title="Условие">
-				<div class="flex flex-wrap items-center gap-4 text-sm">
-					<span>Алфавит: {{ alphabet.label }}, m = {{ m }}</span>
+				<div class="flex flex-wrap items-center gap-6 text-sm">
+					<RingName :alphabet="alphabet" />
 					<span class="inline-flex items-center gap-2">A = <MatrixView :rows="params.a" /></span>
 					<span class="inline-flex items-center gap-2">B = <VectorView :values="params.b" /></span>
 				</div>
@@ -169,17 +176,13 @@ function blockTitle (block: HillBlock): string
 				</p>
 				<StepCard
 					v-else
-					title="а) Зашифровать: Y = A·X + B (mod m)"
+					title="а) Зашифровать: Y = A·X + B"
 				>
 					<p class="seq">
-						X = {{ encrypted.source }}
-						<span
-							v-if="encrypted.padCount"
-							class="text-stone-500"
-						>+ {{ encrypted.padded.slice(encrypted.source.length) }} (добивка до {{ encrypted.padded.length }}, кратно {{ blockSize }})</span>
+						X = {{ encrypted.source }}<span class="pad">{{ encrypted.padded.slice(encrypted.source.length) }}</span>
 					</p>
 					<SequenceLine
-						label="x"
+						label="X"
 						:values="encrypted.x"
 						:group="blockSize"
 					/>
@@ -188,7 +191,7 @@ function blockTitle (block: HillBlock): string
 						:key="i"
 						class="space-y-1 border-t border-stone-100 pt-3 dark:border-stone-800"
 					>
-						<p class="seq font-semibold">
+						<p class="seq">
 							{{ blockTitle(block) }}
 						</p>
 						<div class="flex flex-wrap items-center gap-2 overflow-x-auto">
@@ -198,19 +201,13 @@ function blockTitle (block: HillBlock): string
 							<span>+</span>
 							<VectorView :values="params.b" />
 							<span>=</span>
+							<ExprColumn :rows="encryptRows(block, params.b)" />
+							<span>=</span>
 							<VectorView :values="block.output" />
 						</div>
-						<ul class="seq space-y-0.5 text-stone-600 dark:text-stone-400">
-							<li
-								v-for="(row, r) in block.product.rows"
-								:key="r"
-							>
-								{{ arithmetic(row) }}<span v-if="params.b[r]">, + {{ params.b[r] }} ≡ {{ block.output[r] }}</span>
-							</li>
-						</ul>
 					</div>
 					<SequenceLine
-						label="y"
+						label="Y"
 						:values="encrypted.y"
 					/>
 					<p class="answer">
@@ -228,56 +225,49 @@ function blockTitle (block: HillBlock): string
 				</p>
 				<StepCard
 					v-else
-					title="б) Расшифровать: X = A⁻¹·(Y − B) (mod m)"
+					title="б) Расшифровать: X = A⁻¹·(Y − B)"
 				>
-					<div class="space-y-2 text-sm">
-						<p class="seq">
-							det A = {{ decrypted.inverse.det }}
-							<span v-if="decrypted.inverse.det !== decrypted.inverse.detMod"> ≡ {{ decrypted.inverse.detMod }} (mod {{ m }})</span>,
-							(det A)⁻¹ ≡ {{ decrypted.inverse.detInverse }} (mod {{ m }}),
-							так как {{ decrypted.inverse.detMod }} · {{ decrypted.inverse.detInverse }} = {{ decrypted.inverse.detMod * decrypted.inverse.detInverse }} ≡ 1
-						</p>
-						<div class="flex flex-wrap items-center gap-3 overflow-x-auto">
-							<span class="inline-flex items-center gap-2">adj A = <MatrixView :rows="decrypted.inverse.adjugate" /></span>
-							<span class="inline-flex items-center gap-2">A⁻¹ = {{ decrypted.inverse.detInverse }} · adj A ≡ <MatrixView :rows="decrypted.inverse.inverse" /></span>
-						</div>
-					</div>
 					<p class="seq">
 						Y = {{ decrypted.cipher }}
 					</p>
 					<SequenceLine
-						label="y"
+						label="Y"
 						:values="decrypted.y"
 						:group="blockSize"
 					/>
+					<div class="space-y-2 text-sm">
+						<p class="seq">
+							det A = {{ decrypted.inverse.detMod }}
+						</p>
+						<div class="flex flex-wrap items-center gap-6 overflow-x-auto">
+							<span class="inline-flex items-center gap-2">Ã = <MatrixView :rows="modMatrix(decrypted.inverse.adjugate, m)" /></span>
+							<span class="inline-flex items-center gap-2">A⁻¹ = {{ decrypted.inverse.detInverse }} · Ã = <MatrixView :rows="decrypted.inverse.inverse" /></span>
+						</div>
+					</div>
 					<div
 						v-for="(block, i) in decrypted.blocks"
 						:key="i"
 						class="space-y-1 border-t border-stone-100 pt-3 dark:border-stone-800"
 					>
-						<p class="seq font-semibold">
+						<p class="seq">
 							{{ blockTitle(block) }}
 						</p>
 						<div class="flex flex-wrap items-center gap-2 overflow-x-auto">
 							<MatrixView :rows="decrypted.inverse.inverse" />
-							<span>· (</span>
-							<VectorView :values="block.input" />
-							<span>−</span>
-							<VectorView :values="params.b" />
-							<span>) =</span>
+							<span>·</span>
+							<ParenGroup>
+								<VectorView :values="block.input" />
+								<span>−</span>
+								<VectorView :values="params.b" />
+							</ParenGroup>
+							<span>=</span>
+							<ExprColumn :rows="block.product.rows.map(rowExpression)" />
+							<span>=</span>
 							<VectorView :values="block.output" />
 						</div>
-						<ul class="seq space-y-0.5 text-stone-600 dark:text-stone-400">
-							<li
-								v-for="(row, r) in block.product.rows"
-								:key="r"
-							>
-								{{ arithmetic(row) }}
-							</li>
-						</ul>
 					</div>
 					<SequenceLine
-						label="x"
+						label="X"
 						:values="decrypted.x"
 					/>
 					<p class="answer">
