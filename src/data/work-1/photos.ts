@@ -20,7 +20,7 @@ function photo (variant: number, file: string, width: number, height: number, ca
 	};
 }
 
-/** Фото условия и тетради по вариантам; В6 — пока только условие. */
+/** Фото условия и тетради по вариантам. */
 const PHOTOS: Record<number, Photo[]> = {
 	1: [
 		photo(1, 'sheet', 960, 518, 'Условие (лист заданий)'),
@@ -64,7 +64,14 @@ const PHOTOS: Record<number, Photo[]> = {
 		photo(5, 'p4', 960, 1280, 'Тетрадь, стр. 4'),
 		photo(5, 'p5', 960, 1280, 'Тетрадь, стр. 5'),
 	],
-	6: [ photo(6, 'sheet', 960, 570, 'Условие (лист заданий)') ],
+	6: [
+		photo(6, 'sheet', 960, 570, 'Условие (лист заданий)'),
+		photo(6, 'p1', 960, 1280, 'Тетрадь, стр. 1'),
+		photo(6, 'p2', 960, 1280, 'Тетрадь, стр. 2'),
+		photo(6, 'p3', 960, 1280, 'Тетрадь, стр. 3'),
+		photo(6, 'p4', 960, 1280, 'Тетрадь, стр. 4'),
+		photo(6, 'p5', 960, 1280, 'Тетрадь, стр. 5'),
+	],
 };
 
 export function photosOf (variant: number): Photo[]

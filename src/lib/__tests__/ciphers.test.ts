@@ -23,6 +23,7 @@ describe('Виженер с обратной связью — ответы из 
 		[ 'LEX', 'SIMILIASIMILIBUSCURANTUR', 'DMJATUIDQMATUJFADOJCHKUE' ],
 		[ 'HOT', 'MEDICUSCURATNATURASANAT', 'TSWUGXAEOJCNEAMHRTMRNST' ],
 		[ 'CAR', 'HOMOPROPONITSEDDEUSDISPONIT', 'JODVDDCEFBXHFMWVIXVHCKSWFXH' ],
+		[ 'GOD', 'INVIAVIRTUTINULLAESTVIA', 'OBYQNQQROCKBHNTYUPDTZAT' ],
 	])('ключ %s: шифрование', (key, text, cipher) =>
 	{
 		expect(autokeyEncrypt(text, key, lat, 'plain')).toMatchObject({ cipher });
@@ -35,6 +36,7 @@ describe('Виженер с обратной связью — ответы из 
 		[ 'LEX', 'RYQZUVTVCTGAITDTU', 'GUTTACAVATLAPIDEM' ],
 		[ 'HOT', 'ZQBWPBMNIWTTBMMNXAT', 'SCIENTIAPOTENTIAEST' ],
 		[ 'CAR', 'XIEPUIYDWEDJNUAGZSM', 'VINUMVERBAMINISTRAT' ],
+		[ 'GOD', 'VOADPQWBTZQRLQVMF', 'PAXOPTIMARERUMEST' ],
 	])('ключ %s: расшифрование', (key, cipher, text) =>
 	{
 		expect(autokeyDecrypt(cipher, key, lat, 'plain')).toMatchObject({ text });
@@ -66,6 +68,7 @@ describe('Цезарь — перебор ключей', () =>
 		[ 'NDHVYN', 13, 'AQUILA' ],
 		[ 'GOMWU', 20, 'MUSCA' ],
 		[ 'XTRJG', 15, 'IECUR' ],
+		[ 'WDGDN', 21, 'BILIS' ],
 	])('%s → k = %i → %s', (cipher, k, text) =>
 	{
 		const table = caesarTable(cipher, lat);
@@ -120,6 +123,7 @@ describe('Плейфер — ответы из тетради', () =>
 		[ 'AMICUS', 'CBKDELUAOCRFMQFAIW', 'MEDICECURATEIPSUMX' ],
 		[ 'CARAGIUS', 'OPCFBABZOPWCMDYP', 'NOVUSREXNOVALEXQ' ],
 		[ 'LYNX', 'YFFZZYEDFZZH', 'ACASUADCASUM' ],
+		[ 'LUPUS', 'PFHAANRULTOQPY', 'ADMULTOSANNOSX' ],
 	])('ключ %s: %s → %s', (key, cipher, text) =>
 	{
 		expect(playfairDecrypt(cipher, key, lat)).toMatchObject({ result: text });

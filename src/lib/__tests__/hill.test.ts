@@ -50,6 +50,12 @@ describe('шифр Хилла — ответы из тетради', () =>
 		expect(hillDecrypt('AZTLTILXFPPWKVDHDP', { a: A1, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ text: 'HOMOHOMINILUPUSEST' });
 	});
 
+	it('вариант 6', () =>
+	{
+		expect(hillEncrypt('DIESDIEMDOCET', { a: A1inv, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ padded: 'DIESDIEMDOCETXX', cipher: 'DEXVRPMHDKMKWWT' });
+		expect(hillDecrypt('SLLKUASEGEICBHXCZY', { a: A1inv, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ text: 'OMNIAMEAMECUMPORTO' });
+	});
+
 	it('пробелы и регистр в тексте игнорируются, B прибавляется', () =>
 	{
 		const plain = hillEncrypt('dum spiro spero', { a: A1, b: [ 1, 2, 3 ], alphabet: lat, pad: 'A' });

@@ -31,6 +31,10 @@ const V5 = grid('.,.,14,1;.,.,.,8;3,16,.,.;6,9,.,.');
 const V5A = [[ 15, 4, 14, 1 ], [ 10, 5, 11, 8 ], [ 3, 16, 2, 13 ], [ 6, 9, 7, 12 ]];
 const V5B = [[ 12, 7, 14, 1 ], [ 13, 2, 11, 8 ], [ 3, 16, 5, 10 ], [ 6, 9, 4, 15 ]];
 
+const V6 = grid('15,6,.,.;10,.,.,.;.,.,2,11;.,.,7,14');
+const V6A = [[ 15, 6, 12, 1 ], [ 10, 3, 13, 8 ], [ 5, 16, 2, 11 ], [ 4, 9, 7, 14 ]];
+const V6B = [[ 15, 6, 9, 4 ], [ 10, 3, 16, 5 ], [ 8, 13, 2, 11 ], [ 1, 12, 7, 14 ]];
+
 const sorted = (squares: number[][][]) => [ ...squares ].sort((a, b) => a.flat().join(',').
 	localeCompare(b.flat().join(',')));
 
@@ -62,6 +66,7 @@ describe('магический квадрат — достройка', () =>
 		[ 'вариант 3', V3, [ V3A, V3B ]],
 		[ 'вариант 4', V4, [ V4A, V4B ]],
 		[ 'вариант 5', V5, [ V5A, V5B ]],
+		[ 'вариант 6', V6, [ V6A, V6B ]],
 	])('%s: ровно два решения', (_, input, expected) =>
 	{
 		expect(sorted(solve(input).solutions)).toEqual(sorted(expected));
@@ -112,6 +117,20 @@ describe('маршрутная перестановка — ответы из т
 
 		expect(applyRoute(blocks, V3A, 'rows-numbers').output).toBe('ТКУАРОАУАРАЕКАМУ');
 		expect(applyRoute(blocks, V3A, 'numbers-rows').output).toBe('РАУЕОКАУАУТРАМКА');
+	});
+
+	it('вариант 6: шифрование всеми способами и расшифрование со знаками', () =>
+	{
+		const { blocks } = prepareRouteText('ТРЕТЬЕГО НЕ ДАНО', 4, 'А');
+
+		expect(blocks).toEqual([ 'ТРЕТЬЕГОНЕДАНОАА' ]);
+		expect(applyRoute(blocks, V6A, 'rows-numbers').output).toBe('ТДЕННРАООЬАЕГАТЕ');
+		expect(applyRoute(blocks, V6A, 'cols-numbers').output).toBe('НДЕТЕЬАООРАНЕАТГ');
+		expect(applyRoute(blocks, V6A, 'numbers-rows').output).toBe('АЕАТЕЕНОЬАРДТНГО');
+		expect(applyRoute(blocks, V6A, 'numbers-cols').output).toBe('АЕЬТЕЕАНАНРГТОДО');
+		expect(applyRoute([ 'SOPMOE!!ORTROAME' ], V6A, 'rows-numbers').output).toBe('MTEOOOM!AORP!ESR');
+		expect(applyRoute([ 'SOPMOE!!ORTROAME' ], V6B, 'rows-numbers').output).toBe('OTEM!OMOPORARES!');
+		expect(applyRoute([ 'SOPMOE!!ORTROAME' ], V6A, 'cols-numbers').output).toBe('OTEMPORA!OMORES!');
 	});
 
 	it('обратная перестановка восстанавливает текст', () =>
