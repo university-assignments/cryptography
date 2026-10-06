@@ -1,5 +1,7 @@
 import { computed, ref } from 'vue';
 import { nameSeed } from '@/lib/hash';
+import { sendStats } from '@/lib/stats';
+import { useCode } from './useCode';
 
 /* Ключ читает GTM (переменная «JS - Имя пользователя» → user_name в GA4): переименуешь — поправь контейнер. */
 const STORAGE_KEY = 'name';
@@ -18,6 +20,9 @@ function readStored (): string
 
 const name = ref(readStored());
 
+/* Последнее непустое имя: при смене имени через кнопку оно сначала очищается. */
+let lastName = name.value;
+
 export function useName ()
 {
 	const seed = computed(() => nameSeed(name.value));
@@ -25,7 +30,15 @@ export function useName ()
 
 	const setName = (value: string): void =>
 	{
-		name.value = value.trim();
+		const next = value.trim();
+
+		if (next && next !== lastName)
+		{
+			sendStats({ type: 'name', code: useCode().code.value, oldName: lastName, newName: next });
+			lastName = next;
+		}
+
+		name.value = next;
 
 		try
 		{
