@@ -4,6 +4,7 @@
  * @OnlyCurrentDoc — скрипт получает доступ только к этой таблице, а не ко всему Google Диску.
  *
  * Развёртывание:
+ * 0. Лист «Группа»: A — ФИО, B — ID, C — ссылка (по нему «Сводка» подписывает людей).
  * 1. Таблица → Расширения → Apps Script → вставить этот файл целиком → сохранить.
  * 2. Выполнить функцию setup один раз (создаст листы), разрешить доступ.
  * 3. Начать развёртывание → Новое развёртывание → тип «Веб-приложение»:
@@ -15,12 +16,15 @@
  */
 
 const SHEETS = {
-	view: { name: 'Просмотры', header: [ 'Время', 'ID', 'Имя', 'Работа', 'Вариант', 'Задание', 'Секунд', 'Адрес' ] },
+	view: { name: 'Просмотры', header: [ 'Время', 'ID', 'Имя', 'Работа', 'Вариант', 'Задание', 'Секунд', 'Адрес', 'ФИО по ID' ] },
 	id: { name: 'Смена ID', header: [ 'Время', 'Имя', 'Старый ID', 'Новый ID' ] },
 	name: { name: 'Смена имени', header: [ 'Время', 'ID', 'Старое имя', 'Новое имя' ] },
 };
 
 const SUMMARY = 'Сводка';
+
+/* Лист со списком группы: A — ФИО, B — ID (md5 имени), C — личная ссылка. */
+const GROUP = 'Группа';
 
 function setup()
 {
@@ -29,9 +33,9 @@ function setup()
 	const book = SpreadsheetApp.getActiveSpreadsheet();
 	const summary = book.getSheetByName(SUMMARY) || book.insertSheet(SUMMARY);
 
-	/* ID × вариант → сколько секунд провёл. Самое большое число в строке — его вариант. */
+	/* ФИО (по ID из «Группы») × вариант → сколько секунд провёл. Самое большое число в строке — его вариант. */
 	summary.getRange('A1').setFormula(
-		'=QUERY(\'Просмотры\'!A2:H, "select B, sum(G) where E is not null and E <> \'custom\' group by B pivot E", 0)',
+		'=QUERY(\'Просмотры\'!A2:I, "select I, sum(G) where E is not null and E <> \'custom\' group by I pivot E", 0)',
 	);
 }
 
@@ -62,6 +66,23 @@ function clean(value)
 		: text;
 }
 
+/* ФИО по ID из листа «Группа»; если ID нет в списке — сам ID (или «без ID»). */
+function personById(id)
+{
+	if (!id) return 'без ID';
+
+	const group = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(GROUP);
+
+	if (!group) return id;
+
+	const rows = group.getRange(2, 1, Math.max(group.getLastRow() - 1, 1), 2).getValues();
+	const found = rows.find((row) => String(row[1]).trim().toLowerCase() === String(id).toLowerCase());
+
+	return found
+		? found[0]
+		: id;
+}
+
 function doPost(e)
 {
 	let data;
@@ -81,7 +102,7 @@ function doPost(e)
 
 	const now = new Date();
 	const rows = {
-		view: [ now, data.id, data.name, data.work, data.variant, data.task, Number(data.seconds) || 0, data.path ],
+		view: [ now, data.id, data.name, data.work, data.variant, data.task, Number(data.seconds) || 0, data.path, personById(data.id) ],
 		id: [ now, data.name, data.oldId, data.newId ],
 		name: [ now, data.id, data.oldName, data.newName ],
 	};
