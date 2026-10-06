@@ -1,29 +1,29 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import { captureCode, useCode } from './composables/useCode';
+import { captureId, useId } from './composables/useId';
 import { useName } from './composables/useName';
 import { installTracking } from './lib/tracking';
 import router from './router';
 import './style.css';
 
 const { name } = useName();
-const { code } = useCode();
+const { id } = useId();
 
-/* ?code=… запоминается в браузере и убирается из адреса, чтобы не разойтись дальше вместе со ссылкой. */
+/* ?id=… запоминается в браузере и убирается из адреса, чтобы не разойтись дальше вместе со ссылкой. */
 router.beforeEach((to) =>
 {
-	if (!('code' in to.query)) return true;
+	if (!('id' in to.query)) return true;
 
-	captureCode(to.query.code, name.value);
+	captureId(to.query.id, name.value);
 
 	const query = { ...to.query };
 
-	delete query.code;
+	delete query.id;
 
 	return { path: to.path, query, hash: to.hash, replace: true };
 });
 
-installTracking(router, () => ({ code: code.value, name: name.value }));
+installTracking(router, () => ({ id: id.value, name: name.value }));
 
 createApp(App).use(router).
 	mount('#app');

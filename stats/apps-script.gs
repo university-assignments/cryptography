@@ -15,9 +15,9 @@
  */
 
 const SHEETS = {
-	view: { name: 'Просмотры', header: [ 'Время', 'Код', 'Имя', 'Работа', 'Вариант', 'Задание', 'Секунд', 'Адрес' ] },
-	code: { name: 'Коды', header: [ 'Время', 'Имя', 'Старый код', 'Новый код' ] },
-	name: { name: 'Имена', header: [ 'Время', 'Код', 'Старое имя', 'Новое имя' ] },
+	view: { name: 'Просмотры', header: [ 'Время', 'ID', 'Имя', 'Работа', 'Вариант', 'Задание', 'Секунд', 'Адрес' ] },
+	id: { name: 'Смена ID', header: [ 'Время', 'Имя', 'Старый ID', 'Новый ID' ] },
+	name: { name: 'Смена имени', header: [ 'Время', 'ID', 'Старое имя', 'Новое имя' ] },
 };
 
 const SUMMARY = 'Сводка';
@@ -29,9 +29,9 @@ function setup()
 	const book = SpreadsheetApp.getActiveSpreadsheet();
 	const summary = book.getSheetByName(SUMMARY) || book.insertSheet(SUMMARY);
 
-	/* Имя × вариант → сколько секунд провёл. Самое большое число в строке — его вариант. */
+	/* ID × вариант → сколько секунд провёл. Самое большое число в строке — его вариант. */
 	summary.getRange('A1').setFormula(
-		'=QUERY(\'Просмотры\'!A2:H, "select C, sum(G) where E is not null and E <> \'custom\' group by C pivot E", 0)',
+		'=QUERY(\'Просмотры\'!A2:H, "select B, sum(G) where E is not null and E <> \'custom\' group by B pivot E", 0)',
 	);
 }
 
@@ -81,9 +81,9 @@ function doPost(e)
 
 	const now = new Date();
 	const rows = {
-		view: [ now, data.code, data.name, data.work, data.variant, data.task, Number(data.seconds) || 0, data.path ],
-		code: [ now, data.name, data.oldCode, data.newCode ],
-		name: [ now, data.code, data.oldName, data.newName ],
+		view: [ now, data.id, data.name, data.work, data.variant, data.task, Number(data.seconds) || 0, data.path ],
+		id: [ now, data.name, data.oldId, data.newId ],
+		name: [ now, data.id, data.oldName, data.newName ],
 	};
 
 	const lock = LockService.getScriptLock();

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { nameSeed } from '@/lib/hash';
 import { sendStats } from '@/lib/stats';
-import { useCode } from './useCode';
+import { useId } from './useId';
 
 /* Ключ читает GTM (переменная «JS - Имя пользователя» → user_name в GA4): переименуешь — поправь контейнер. */
 const STORAGE_KEY = 'name';
@@ -34,7 +34,7 @@ export function useName ()
 
 		if (next && next !== lastName)
 		{
-			sendStats({ type: 'name', code: useCode().code.value, oldName: lastName, newName: next });
+			sendStats({ type: 'name', id: useId().id.value, oldName: lastName, newName: next });
 			lastName = next;
 		}
 
