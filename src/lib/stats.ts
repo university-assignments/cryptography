@@ -3,7 +3,7 @@ import { STATS_URL } from '@/config';
 export interface ViewEvent
 {
 	type: 'view';
-	code: string;
+	id: string;
 	name: string;
 	work: string;
 	variant: string;
@@ -12,25 +12,25 @@ export interface ViewEvent
 	path: string;
 }
 
-export interface CodeEvent
+export interface IdEvent
 {
-	type: 'code';
+	type: 'id';
 	name: string;
 
-	/** Пусто — человек пришёл с кодом впервые. */
-	oldCode: string;
-	newCode: string;
+	/** Пусто — человек пришёл по личной ссылке впервые. */
+	oldId: string;
+	newId: string;
 }
 
 export interface NameEvent
 {
 	type: 'name';
-	code: string;
+	id: string;
 	oldName: string;
 	newName: string;
 }
 
-export type StatsEvent = ViewEvent | CodeEvent | NameEvent;
+export type StatsEvent = ViewEvent | IdEvent | NameEvent;
 
 /*
  * text/plain без лишних заголовков — «простой» запрос без CORS-preflight, который Apps Script не умеет.

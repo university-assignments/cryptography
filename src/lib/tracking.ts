@@ -23,7 +23,7 @@ function param (route: RouteLocationNormalized, key: string): string
  * Сколько секунд человек провёл на каждой странице варианта/задания.
  * По сумме времени видно, какой вариант был его: чужие обычно только пролистывают.
  */
-export function installTracking (router: Router, identity: () => { code: string; name: string }): void
+export function installTracking (router: Router, identity: () => { id: string; name: string }): void
 {
 	let current: CurrentView | null = null;
 
