@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ rows: number[][] }>();
+defineProps<{ rows: (number | null)[][] }>();
 </script>
 
 <template>
@@ -17,7 +17,7 @@ defineProps<{ rows: number[][] }>();
 					v-for="(value, c) in row"
 					:key="c"
 					class="text-right"
-				>{{ value }}</span>
+				>{{ value ?? '·' }}</span>
 			</template>
 		</span>
 		<span class="w-1.5 rounded-r border-y border-r border-current" />

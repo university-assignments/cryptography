@@ -5,33 +5,33 @@ const props = defineProps<{
 	label: string;
 	values: number[];
 
-	/** Размер блока — между блоками ставится «|». */
+	/** Размер блока — блоки выделяются дугой сверху, как в тетради. */
 	group?: number;
-
-	/** Буквы, соответствующие числам (показываются той же строкой ниже). */
-	letters?: string;
 }>();
 
-const text = computed(() =>
+const groups = computed(() =>
 {
-	const { group } = props;
+	const size = props.group && props.group > 0
+		? props.group
+		: props.values.length;
+	const chunks: number[][] = [];
 
-	if (!group || group <= 0) return props.values.join(', ');
+	for (let i = 0; i < props.values.length; i += size) chunks.push(props.values.slice(i, i + size));
 
-	const chunks: string[] = [];
-
-	for (let i = 0; i < props.values.length; i += group) chunks.push(props.values.slice(i, i + group).join(', '));
-
-	return chunks.join(' | ');
+	return chunks;
 });
+
+const arcs = computed(() => Boolean(props.group && props.group > 0));
 </script>
 
 <template>
-	<div class="seq">
-		<span class="font-semibold">{{ label }}</span> = ({{ text }})
-		<span
-			v-if="letters"
-			class="block text-stone-500 dark:text-stone-400"
-		>{{ label.toUpperCase() }} = {{ letters }}</span>
+	<div class="seq leading-8">
+		{{ label }} = (<template
+			v-for="(chunk, i) in groups"
+			:key="i"
+		><span
+			class="inline-block whitespace-nowrap"
+			:class="arcs ? 'arc' : ''"
+		>{{ chunk.join(', ') }}</span><template v-if="i < groups.length - 1">, </template></template>)
 	</div>
 </template>

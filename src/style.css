@@ -60,6 +60,21 @@
 		@apply mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300;
 	}
 
+	/* Дуга над группой чисел, как в тетради. */
+	.arc {
+		@apply relative px-0.5 before:absolute before:inset-x-0 before:-top-0.5 before:h-2.5 before:rounded-t-[50%] before:border-t before:border-current before:content-[''];
+	}
+
+	/* Добивка — другим цветом, без пометок. */
+	.pad {
+		@apply text-amber-600 dark:text-amber-400;
+	}
+
+	/* Пояснение сайта — не переписывается. */
+	.note {
+		@apply text-xs italic text-sky-700 before:content-['ⓘ_'] dark:text-sky-300;
+	}
+
 	.hint {
 		@apply text-sm text-stone-500 dark:text-stone-400;
 	}

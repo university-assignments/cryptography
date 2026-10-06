@@ -133,10 +133,7 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 				<div class="flex flex-wrap items-start gap-6">
 					<div class="space-y-1">
 						<p class="seq">
-							K = {{ result.table.key }}<span
-								v-if="result.table.layout.merged"
-								class="text-stone-500"
-							>, {{ result.table.layout.merged.from }} → {{ result.table.layout.merged.to }}</span>
+							K = {{ result.table.key }}
 						</p>
 						<GridView
 							:cells="result.table.table"
@@ -153,7 +150,7 @@ const direction = (mode: 'encrypt' | 'decrypt', rule: PlayfairPair['rule']): str
 							@click="hovered = hovered === pair ? null : pair"
 						>
 							{{ pair.input }} → <span class="font-semibold">{{ pair.output }}</span>
-							<span class="text-stone-500"> — {{ PAIR_RULE_LABELS[pair.rule] }}, {{ direction(mode, pair.rule) }}</span>
+							<span class="note ml-2">{{ PAIR_RULE_LABELS[pair.rule] }}, {{ direction(mode, pair.rule) }}</span>
 						</li>
 					</ul>
 				</div>
