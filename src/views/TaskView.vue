@@ -69,7 +69,7 @@ const siblings = computed(() =>
 				:to="`/work/${work.id}/variant/${variant}/task/${siblings.prev.id}`"
 				class="btn-secondary"
 			>
-				← {{ siblings.prev.title }}
+				← {{ siblings.prev.id }}. {{ siblings.prev.title }}
 			</RouterLink>
 			<span v-else />
 			<RouterLink
@@ -77,7 +77,7 @@ const siblings = computed(() =>
 				:to="`/work/${work.id}/variant/${variant}/task/${siblings.next.id}`"
 				class="btn-secondary"
 			>
-				{{ siblings.next.title }} →
+				{{ siblings.next.id }}. {{ siblings.next.title }} →
 			</RouterLink>
 		</nav>
 	</div>

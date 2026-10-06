@@ -1,7 +1,12 @@
 <script setup lang="ts">
 
 /* Пустая клетка (null) подписывается своим именем a₁₃, как на практике. */
-defineProps<{ rows: (number | null)[][] }>();
+withDefaults(defineProps<{
+	rows: (number | string | null)[][];
+
+	/** Ключи «r,c» выделенных клеток. */
+	highlight?: Set<string>;
+}>(), { highlight: () => new Set<string>() });
 </script>
 
 <template>
@@ -25,7 +30,8 @@ defineProps<{ rows: (number | null)[][] }>();
 					>a<sub>{{ r + 1 }}{{ c + 1 }}</sub></span>
 					<span
 						v-else
-						class="text-right"
+						class="rounded text-right"
+						:class="highlight.has(`${r},${c}`) ? 'bg-amber-200 font-semibold dark:bg-amber-800' : ''"
 					>{{ value }}</span>
 				</template>
 			</template>

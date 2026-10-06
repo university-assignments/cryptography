@@ -8,9 +8,11 @@ import MatrixView from '@/components/MatrixView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
+import TranslationLine from '@/components/TranslationLine.vue';
 import TexMath from '@/components/TexMath.vue';
 import { useName } from '@/composables/useName';
 import { useQueryParam } from '@/composables/useQueryParam';
+import { translatePhrase } from '@/data/translations';
 import type { VariantPreset } from '@/data/work-1/variants';
 import { sub } from '@/lib/format';
 import { pick } from '@/lib/hash';
@@ -101,6 +103,11 @@ const decryptRoutes = computed(() =>
 		routes: ROUTE_MODES.map((mode) => applyRoute(decryptBlocks.value!.blocks, square, mode.id)),
 	}));
 });
+
+/* Вариант расшифровки, который совпал с известной фразой, — он и есть ответ. */
+const readable = computed(() => decryptRoutes.value.
+	flatMap((entry) => entry.routes.map((route) => route.output)).
+	find((output) => translatePhrase(output) !== undefined));
 
 function lineEquation (step: SingleStep): string
 {
@@ -359,6 +366,12 @@ const givens = computed(() =>
 					<p class="seq">
 						Y = {{ decryptBlocks.blocks.join(' ') }}
 					</p>
+					<template v-if="readable">
+						<p class="answer">
+							X = {{ readable }}
+						</p>
+						<TranslationLine :text="readable" />
+					</template>
 					<div
 						v-for="entry in decryptRoutes"
 						:key="entry.index"
@@ -383,7 +396,10 @@ const givens = computed(() =>
 										:cells="block.grid"
 								plain
 									/>
-									<span class="seq">X = {{ route.output }}</span>
+									<span
+										class="seq"
+										:class="translatePhrase(route.output) ? 'answer' : ''"
+									>X = {{ route.output }}</span>
 								</div>
 							</div>
 						</div>

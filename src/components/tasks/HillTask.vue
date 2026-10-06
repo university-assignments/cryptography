@@ -10,6 +10,7 @@ import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
+import TranslationLine from '@/components/TranslationLine.vue';
 import VectorView from '@/components/VectorView.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
@@ -294,6 +295,7 @@ function blockTitle (block: HillBlock): string
 					<p class="answer">
 						X = {{ decrypted.text }}
 					</p>
+					<TranslationLine :text="decrypted.text" />
 				</StepCard>
 			</template>
 		</template>

@@ -7,6 +7,7 @@ import ResetButton from '@/components/ResetButton.vue';
 import RingName from '@/components/RingName.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
+import TranslationLine from '@/components/TranslationLine.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
 import {
@@ -155,6 +156,7 @@ function keyLetters (result: VigenereResult): string
 					:result="{ name: 'X', letters: decrypted.text, values: decrypted.x }"
 					:keyword="decrypted.key.length"
 				/>
+				<TranslationLine :text="decrypted.text" />
 			</StepCard>
 		</template>
 	</div>
