@@ -71,7 +71,7 @@ export const VARIANTS: VariantPreset[] = [
 	{
 		id: 4,
 		hill: { a: A4, b: zero, encrypt: 'VOXPOPULIVOXDEI', decrypt: 'ZUDIDQNJUIGMLRWHNRYKC', pad: 'X' },
-		square: { grid: '.,.,5,.;.,.,10,3;14,7,.,.;1,12,.,.', encrypt: 'ПЕРВЫЙ БЛИН КОМОМ', decrypt: 'ARTPAPEASADRARES', pad: 'А' },
+		square: { grid: '.,.,5,.;.,.,10,3;14,7,.,.;1,12,.,.', encrypt: 'ПЕРВЫЙ БЛИН КОМОМ', decrypt: 'ARTPAPEASADRARES', pad: 'Ы' },
 		vigenere: { key: 'HOT', encrypt: 'MEDICUSCURATNATURASANAT', decrypt: 'ZQBWPBMNIWTTBMMNXAT' },
 		caesar: { cipher: 'GOMWU' },
 		playfair: { key: 'CARAGIUS', decrypt: 'OPCFBABZOPWCMDYP' },

@@ -12,7 +12,8 @@ const lat = ALPHABETS.lat;
  * В тетради в трёх местах арифметические описки, здесь — пересчитанные значения:
  * В1: вторая буква C (число 2 в тетради верное, буква B — нет);
  * В2: позиции 10 и 13 — N и A (в тетради H и U, k₁₃ взят как 7 вместо 13);
- * В5: хвост FXH (в тетради ACH).
+ * В5: хвост FXH (в тетради ACH);
+ * В4 (шифрование): в тетради ключ вычтен, а не прибавлен — здесь y = x + k.
  */
 describe('Виженер с обратной связью — ответы из тетради', () =>
 {
@@ -20,6 +21,7 @@ describe('Виженер с обратной связью — ответы из 
 		[ 'DOG', 'FORTESFORTUNAADIUVAT', 'ICXYSJYSJYIETUQIUYIN' ],
 		[ 'CAT', 'NIHILHABENTINIHILDEEST', 'PIAVTOIMLNUMABPVTKMPVX' ],
 		[ 'LEX', 'SIMILIASIMILIBUSCURANTUR', 'DMJATUIDQMATUJFADOJCHKUE' ],
+		[ 'HOT', 'MEDICUSCURATNATURASANAT', 'TSWUGXAEOJCNEAMHRTMRNST' ],
 		[ 'CAR', 'HOMOPROPONITSEDDEUSDISPONIT', 'JODVDDCEFBXHFMWVIXVHCKSWFXH' ],
 	])('ключ %s: шифрование', (key, text, cipher) =>
 	{
@@ -31,6 +33,7 @@ describe('Виженер с обратной связью — ответы из 
 		[ 'DOG', 'KISHHGMRLDEIVEJX', 'HUMANUMERRAREEST' ],
 		[ 'CAT', 'HAEFXDPBUXIUZIJLQ', 'FALAXSPECIESRERUM' ],
 		[ 'LEX', 'RYQZUVTVCTGAITDTU', 'GUTTACAVATLAPIDEM' ],
+		[ 'HOT', 'ZQBWPBMNIWTTBMMNXAT', 'SCIENTIAPOTENTIAEST' ],
 		[ 'CAR', 'XIEPUIYDWEDJNUAGZSM', 'VINUMVERBAMINISTRAT' ],
 	])('ключ %s: расшифрование', (key, cipher, text) =>
 	{
@@ -61,6 +64,7 @@ describe('Цезарь — перебор ключей', () =>
 		[ 'NKLNL', 19, 'URSUS' ],
 		[ 'NLYEZC', 11, 'CANTOR' ],
 		[ 'NDHVYN', 13, 'AQUILA' ],
+		[ 'GOMWU', 20, 'MUSCA' ],
 		[ 'XTRJG', 15, 'IECUR' ],
 	])('%s → k = %i → %s', (cipher, k, text) =>
 	{
@@ -114,6 +118,7 @@ describe('Плейфер — ответы из тетради', () =>
 		[ 'CANIS', 'CDRSKGSCNBHOELNZ', 'ABUNODISCEOMNESX' ],
 		[ 'CORNIX', 'TXENBXQIXTXEOE', 'MEDIAETREMEDIA' ],
 		[ 'AMICUS', 'CBKDELUAOCRFMQFAIW', 'MEDICECURATEIPSUMX' ],
+		[ 'CARAGIUS', 'OPCFBABZOPWCMDYP', 'NOVUSREXNOVALEXQ' ],
 		[ 'LYNX', 'YFFZZYEDFZZH', 'ACASUADCASUM' ],
 	])('ключ %s: %s → %s', (key, cipher, text) =>
 	{

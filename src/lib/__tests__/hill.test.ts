@@ -8,6 +8,7 @@ const A1 = [[ 0, 3, 3 ], [ 11, 1, 1 ], [ 1, 4, 5 ]];
 const A1inv = [[ 11, 19, 0 ], [ 4, 19, 25 ], [ 5, 7, 1 ]];
 const A3 = [[ 1, 9, 10 ], [ 3, 6, 9 ], [ 8, 2, 11 ]];
 const A3inv = [[ 20, 5, 25 ], [ 13, 7, 25 ], [ 2, 14, 1 ]];
+const A4 = A3inv;
 const zero = [ 0, 0, 0 ];
 
 describe('шифр Хилла — ответы из тетради', () =>
@@ -35,6 +36,12 @@ describe('шифр Хилла — ответы из тетради', () =>
 	{
 		expect(hillEncrypt('INSAECULASAECULORUM', { a: A3, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ padded: 'INSAECULASAECULORUMXX', cipher: 'TECEQEPWAGMGGRVDMCHRF' });
 		expect(hillDecrypt('TGZDKFJEEADCBYIEDCMXFZBH', { a: A3, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ text: 'VERBAVOLANTSCRIPTAMANENT' });
+	});
+
+	it('вариант 4', () =>
+	{
+		expect(hillEncrypt('VOXPOPULIVOXDEI', { a: A4, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ padCount: 0, cipher: 'ZKBRSHFRUZKBUHS' });
+		expect(hillDecrypt('ZUDIDQNJUIGMLRWHNRYKC', { a: A4, b: zero, alphabet: lat, pad: 'X' })).toMatchObject({ text: 'BONNEMINEAMAUVAISJEUA' });
 	});
 
 	it('вариант 5', () =>

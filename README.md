@@ -19,11 +19,11 @@
 Vue 3 + Vite + TypeScript, vue-router, Tailwind CSS v4, PhotoSwipe. Линт: oxlint + ESLint (`@stylistic`, `eslint-plugin-vue`), типы — `vue-tsc`, тесты — Vitest. Деплой — GitHub Actions → GitHub Pages (`actions/deploy-pages`), `404.html` = копия `index.html` для history-роутинга.
 
 ```sh
-npm install
-npm run dev          # http://localhost:5173/cryptography/
-npm test             # vitest — ответы из тетради как тест-кейсы
-npm run lint         # oxlint + eslint --fix
-npm run build        # type-check + vite build → dist/
+pnpm install
+pnpm dev             # http://localhost:5173/cryptography/
+pnpm test            # vitest — ответы из тетради как тест-кейсы
+pnpm lint            # oxlint + eslint --fix
+pnpm build           # type-check + vite build → dist/
 ```
 
 ## Структура
@@ -40,4 +40,4 @@ public/photos/      webp-фото, по 2 размера (thumb 480px, полн�
 ## TODO
 
 - GA4 через Google Tag Manager (ждёт GTM-ID), имя пользователя — отдельным полем события.
-- Фото тетради для вариантов 4 и 6 (условия уже есть).
+- Фото тетради для варианта 6 (условие уже есть).
