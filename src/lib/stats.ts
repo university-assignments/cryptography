@@ -32,6 +32,54 @@ export interface NameEvent
 
 export type StatsEvent = ViewEvent | IdEvent | NameEvent;
 
+/* С префиксом: localStorage общий для всех сайтов на university-assignments.github.io. */
+const BROWSER_KEY = 'cryptography:browser:id';
+
+let browser = '';
+
+/**
+ * Случайный ID браузера: дата и время первого захода + 4 случайных символа (20261007-013757-k3f9).
+ * Не зависит от имени — видно, что под одним именем заходили с разных браузеров.
+ */
+export function browserId (): string
+{
+	if (browser) return browser;
+
+	try
+	{
+		browser = localStorage.getItem(BROWSER_KEY) ?? '';
+	}
+	catch
+	{
+
+		/* приватный режим — ID живёт до перезагрузки */
+	}
+
+	if (browser) return browser;
+
+	const stamp = new Date().toISOString().
+		slice(0, 19).
+		replace(/[-:]/gu, '').
+		replace('T', '-');
+	const random = Math.random().toString(36).
+		slice(2, 6).
+		padEnd(4, '0');
+
+	browser = `${stamp}-${random}`;
+
+	try
+	{
+		localStorage.setItem(BROWSER_KEY, browser);
+	}
+	catch
+	{
+
+		/* приватный режим — ID живёт до перезагрузки */
+	}
+
+	return browser;
+}
+
 /*
  * text/plain без лишних заголовков — «простой» запрос без CORS-preflight, который Apps Script не умеет.
  * sendBeacon доходит и при закрытии вкладки; ответ не нужен.
@@ -40,7 +88,7 @@ export function sendStats (event: StatsEvent): void
 {
 	if (!STATS_URL) return;
 
-	const body = JSON.stringify({ ...event, ts: new Date().toISOString() });
+	const body = JSON.stringify({ ...event, browser: browserId(), ts: new Date().toISOString() });
 
 	try
 	{
