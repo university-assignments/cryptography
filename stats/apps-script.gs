@@ -41,10 +41,25 @@ function setup()
 	const book = SpreadsheetApp.getActiveSpreadsheet();
 	const summary = book.getSheetByName(SUMMARY) || book.insertSheet(SUMMARY);
 
-	/* ФИО (по ID из «Группы») × вариант → сколько секунд провёл. Самое большое число в строке — его вариант. */
-	summary.getRange('A1').setFormula(
-		'=QUERY(\'Варианты\'!A2:H, "select D, sum(H) where F is not null and F <> \'custom\' group by D pivot F", 0)',
+	/*
+	 * ФИО (по ID из «Группы») × вариант → сколько секунд провёл. Самое большое число в строке — его вариант.
+	 * Номера вариантов Таблица хранит числами; «custom» (свои данные) в числовом столбце QUERY считает пустым.
+	 */
+	setFormulaAnyLocale(
+		summary.getRange('A1'),
+		'=QUERY(\'Варианты\'!A2:H, "select D, sum(H) where F is not null group by D pivot F", 0)',
 	);
+}
+
+/* В локалях с десятичной запятой (ru) аргументы формулы разделяет «;»: не разобралась с «,» — меняем запятые вне кавычек. */
+function setFormulaAnyLocale(range, formula)
+{
+	range.setFormula(formula);
+	SpreadsheetApp.flush();
+
+	if (range.getDisplayValue() !== '#ERROR!') return;
+
+	range.setFormula(formula.split('"').map((part, i) => (i % 2 ? part : part.replace(/,/g, ';'))).join('"'));
 }
 
 function sheetFor(spec)
