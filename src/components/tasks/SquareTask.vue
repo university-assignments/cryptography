@@ -8,6 +8,7 @@ import MatrixView from '@/components/MatrixView.vue';
 import PermutationView from '@/components/PermutationView.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
+import TexMath from '@/components/TexMath.vue';
 import { useName } from '@/composables/useName';
 import { useQueryParam } from '@/composables/useQueryParam';
 import type { VariantPreset } from '@/data/work-1/variants';
@@ -106,11 +107,6 @@ function pairEquation (eq: PairEquation): string
 	return `${cellName(eq.cells[0])} + ${cellName(eq.cells[1])} = ${eq.target}`;
 }
 
-function pairCandidates (eq: PairEquation): string
-{
-	return eq.candidates.map(([ p, q ]) => `${q}+${p}`).join(', ');
-}
-
 function unpadded (prepared: { blocks: string[]; padCount: number }): string
 {
 	const chars = [ ...prepared.blocks.join('') ];
@@ -181,23 +177,26 @@ function modeLabel (id: string): string
 			<StepCard title="Достройка магического квадрата">
 				<div class="flex flex-wrap items-start gap-6">
 					<span class="inline-flex items-center gap-2 text-sm">A = <MatrixView :rows="grid" /></span>
-					<p class="seq">
-						S = (n² + 1)·n / 2 = ({{ n }}² + 1)·{{ n }} / 2 = {{ analysis.sum }}
-					</p>
+					<TexMath :tex="`S = \\dfrac{(n^2 + 1)\\,n}{2} = \\dfrac{(${n}^2 + 1)\\cdot ${n}}{2} = ${analysis.sum}`" />
 				</div>
-				<div
+				<table
 					v-if="analysis.singles.length"
-					class="space-y-1"
+					class="text-sm"
 				>
-					<p
-						v-for="(step, i) in analysis.singles"
-						:key="i"
-						class="seq grid grid-cols-[minmax(0,18rem)_auto] gap-x-6 font-sans"
-					>
-						<span>{{ lineEquation(step) }}</span>
-						<span>{{ cellName(step.cell) }} = {{ step.value }}</span>
-					</p>
-				</div>
+					<tbody>
+						<tr
+							v-for="(step, i) in analysis.singles"
+							:key="i"
+						>
+							<td class="py-0.5 pr-10">
+								{{ lineEquation(step) }}
+							</td>
+							<td class="py-0.5">
+								{{ cellName(step.cell) }} = {{ step.value }}
+							</td>
+						</tr>
+					</tbody>
+				</table>
 				<p
 					v-if="analysis.error"
 					class="error"
@@ -205,19 +204,28 @@ function modeLabel (id: string): string
 					{{ analysis.error }}
 				</p>
 				<template v-else>
-					<div
+					<table
 						v-if="analysis.pairs.length"
-						class="space-y-1"
+						class="text-sm"
 					>
-						<p
-							v-for="(eq, i) in analysis.pairs"
-							:key="i"
-							class="seq grid grid-cols-[minmax(0,10rem)_auto] gap-x-6 font-sans"
-						>
-							<span>{{ pairEquation(eq) }}</span>
-							<span>{{ pairCandidates(eq) }}</span>
-						</p>
-					</div>
+						<tbody>
+							<tr
+								v-for="(eq, i) in analysis.pairs"
+								:key="i"
+							>
+								<td class="py-0.5 pr-10">
+									{{ pairEquation(eq) }}
+								</td>
+								<td
+									v-for="([p, q], j) in eq.candidates"
+									:key="j"
+									class="py-0.5 pr-8"
+								>
+									{{ q }}+{{ p }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
 					<p
 						v-if="solution.error"
 						class="error"
@@ -241,12 +249,6 @@ function modeLabel (id: string): string
 								class="space-y-1"
 							>
 								<span class="inline-flex items-center gap-2 text-sm">A{{ sub(i + 1) }} = <MatrixView :rows="square" /></span>
-								<p
-									v-if="i === chosen && squares.length > 1"
-									class="note"
-								>
-									для шифрования в а) — выбран по вашему имени
-								</p>
 							</div>
 						</div>
 					</div>
@@ -264,6 +266,12 @@ function modeLabel (id: string): string
 					v-else
 					:title="`а) Зашифровать (A${sub(chosen + 1)})`"
 				>
+					<p
+						v-if="squares.length > 1"
+						class="note"
+					>
+						квадрат A{{ sub(chosen + 1) }} выбран по вашему имени
+					</p>
 					<p class="seq">
 						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
 					</p>
