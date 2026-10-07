@@ -68,11 +68,16 @@ export interface InverseSteps
 	det: number;
 	detMod: number;
 	detInverse: number;
+
+	/** Ã — матрица алгебраических дополнений (ещё не транспонированная). */
+	cofactors: Matrix;
+
+	/** Ãᵀ — на неё умножается det⁻¹. */
 	adjugate: Matrix;
 	inverse: Matrix;
 }
 
-/** Обратная матрица по модулю m через присоединённую: A⁻¹ = det⁻¹ · adj(A) (mod m). */
+/** Обратная матрица по модулю m: A⁻¹ = det⁻¹ · Ãᵀ (mod m), Ã — алгебраические дополнения. */
 export function inverseMod (a: Matrix, m: number): InverseSteps | { error: string }
 {
 	const d = det(a);
@@ -84,10 +89,11 @@ export function inverseMod (a: Matrix, m: number): InverseSteps | { error: strin
 		return { error: `det A = ${d} ≡ ${detMod} (mod ${m}) не взаимно прост с ${m} — матрица необратима, расшифровать нельзя.` };
 	}
 
-	const adjugate = transpose(cofactors(a));
+	const complements = cofactors(a);
+	const adjugate = transpose(complements);
 	const inverse = modMatrix(adjugate.map((row) => row.map((v) => v * detInverse)), m);
 
-	return { det: d, detMod, detInverse, adjugate, inverse };
+	return { det: d, detMod, detInverse, cofactors: complements, adjugate, inverse };
 }
 
 export interface RowProduct

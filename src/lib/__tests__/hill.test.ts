@@ -20,6 +20,16 @@ describe('шифр Хилла — ответы из тетради', () =>
 		expect(inverseMod(A3, 26)).toMatchObject({ inverse: A3inv });
 	});
 
+	it('A⁻¹ = det⁻¹ · Ãᵀ: Ã — алгебраические дополнения, умножается транспонированная', () =>
+	{
+		expect(inverseMod(A1, 26)).toMatchObject({
+			detMod: 19,
+			detInverse: 11,
+			cofactors: [[ 1, -54, 43 ], [ -3, -3, 3 ], [ 0, 33, -33 ]],
+			adjugate: [[ 1, -3, 0 ], [ -54, -3, 33 ], [ 43, 3, -33 ]],
+		});
+	});
+
 	it('вариант 1', () =>
 	{
 		expect(hillEncrypt('DUMSPIROSPERO', { a: A1, b: zero, alphabet: lat, pad: 'A' })).toMatchObject({ padded: 'DUMSPIROSPEROAA', cipher: 'SNNRNOSLHLEMAYO' });
