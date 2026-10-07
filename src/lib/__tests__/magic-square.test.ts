@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	analyze,
 	applyRoute,
+	inverseMode,
 	invertPermutation,
 	parseGrid,
 	prepareRouteText,
@@ -149,5 +150,18 @@ describe('маршрутная перестановка — ответы из т
 		expect(prepareRouteText('ПЕРВЫЙ БЛИН КОМОМ', 4, 'Ы')).toMatchObject({ blocks: [ 'ПЕРВЫЙБЛИНКОМОМЫ' ], padCount: 1 });
 		expect(prepareRouteText('SOPMOE!!ORTROAME', 4, 'A')).toMatchObject({ blocks: [ 'SOPMOE!!ORTROAME' ], padCount: 0 });
 		expect(prepareRouteText('abcdefghijklmnopq', 4, 'x').blocks).toEqual([ 'ABCDEFGHIJKLMNOP', 'QXXXXXXXXXXXXXXX' ]);
+	});
+});
+
+describe('магический квадрат — обратный способ обхода', () =>
+{
+	it.each([ 'rows-numbers', 'cols-numbers', 'numbers-rows', 'numbers-cols' ] as const)('%s: зашифровать обратным и расшифровать им же — исходный текст', (mode) =>
+	{
+		const { blocks } = prepareRouteText('ПЕРВЫЙ БЛИН КОМОМ', 4, 'Ы');
+		const cipher = applyRoute(blocks, V4A, inverseMode(mode)).output;
+		const { blocks: cipherBlocks } = prepareRouteText(cipher, 4, 'Ы');
+
+		expect(applyRoute(cipherBlocks, V4A, mode).output).toBe(blocks.join(''));
+		expect(inverseMode(inverseMode(mode))).toBe(mode);
 	});
 });
