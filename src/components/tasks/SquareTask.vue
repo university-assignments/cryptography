@@ -6,6 +6,7 @@ import GridEditor from '@/components/GridEditor.vue';
 import GridView from '@/components/GridView.vue';
 import MatrixView from '@/components/MatrixView.vue';
 import ResetButton from '@/components/ResetButton.vue';
+import SquareBranches from '@/components/SquareBranches.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
 import TranslationLine from '@/components/TranslationLine.vue';
@@ -16,6 +17,7 @@ import { translatePhrase } from '@/data/translations';
 import type { VariantPreset } from '@/data/work-1/variants';
 import { sub } from '@/lib/format';
 import { pick } from '@/lib/hash';
+import { search } from '@/lib/magic-search';
 import {
 	type PairEquation,
 	type RouteMode,
@@ -25,6 +27,7 @@ import {
 	analyze,
 	applyRoute,
 	cellName,
+	inverseMode,
 	parseGrid,
 	prepareRouteText,
 	ROUTE_MODES,
@@ -65,26 +68,11 @@ const solution = computed(() =>
 	return { solutions: [] as Square[], error: 'Введите известные клетки квадрата.' };
 });
 const squares = computed(() => solution.value.solutions);
-const chosen = computed(() => pick(seed.value, squares.value.length));
-
-const encryptBlocks = computed(() =>
+const branches = computed(() =>
 {
-	if (text.value.trim()) return prepareRouteText(text.value, n.value, pad.value);
+	if (grid.value) return search(grid.value);
 
 	return null;
-});
-
-/* Способ обхода для а) тоже выбирается по имени — у разных людей разные решения. */
-const primaryMode = computed(() => pick(Math.floor(seed.value / 2), ROUTE_MODES.length));
-const encryptRoutes = computed<RouteResult[]>(() =>
-{
-	const square = squares.value[chosen.value];
-
-	if (!square || !encryptBlocks.value || encryptBlocks.value.error) return [];
-
-	const order = [ primaryMode.value, ...ROUTE_MODES.keys() ].filter((v, i, all) => all.indexOf(v) === i);
-
-	return order.map((index) => applyRoute(encryptBlocks.value!.blocks, square, ROUTE_MODES[index]!.id));
 });
 
 const decryptBlocks = computed(() =>
@@ -97,6 +85,8 @@ interface DecryptResult
 {
 	label: string;
 	output: string;
+	square: number;
+	mode: RouteMode;
 }
 
 interface DecryptStep
@@ -125,7 +115,7 @@ const decryptSteps = computed<DecryptStep[]>(() =>
 		steps.push({
 			label,
 			grids: routes[0]!.blocks.map((block) => block.grid),
-			results: routes.map((route, i) => ({ label: `A${sub(i + 1)}`, output: route.output })),
+			results: routes.map((route, i) => ({ label: `A${sub(i + 1)}`, output: route.output, square: i, mode })),
 		});
 	}
 
@@ -138,8 +128,8 @@ const decryptSteps = computed<DecryptStep[]>(() =>
 			label: `буквы по номерам клеток A${sub(i + 1)}`,
 			grids: byRows.blocks.map((block) => block.grid),
 			results: [
-				{ label: 'по строкам', output: byRows.output },
-				{ label: 'по столбцам', output: byCols.output },
+				{ label: 'по строкам', output: byRows.output, square: i, mode: 'numbers-rows' },
+				{ label: 'по столбцам', output: byCols.output, square: i, mode: 'numbers-cols' },
 			],
 		});
 	});
@@ -149,7 +139,8 @@ const decryptSteps = computed<DecryptStep[]>(() =>
 
 /* Шаг, где расшифровка совпала с известной фразой: дальше пробовать не нужно. */
 const readableStep = computed(() => decryptSteps.value.findIndex((step) => step.results.some((result) => translatePhrase(result.output) !== undefined)));
-const readable = computed(() => decryptSteps.value[readableStep.value]?.results.find((result) => translatePhrase(result.output) !== undefined)?.output);
+const found = computed(() => decryptSteps.value[readableStep.value]?.results.find((result) => translatePhrase(result.output) !== undefined));
+const readable = computed(() => found.value?.output);
 const shownSteps = computed(() =>
 {
 	if (readableStep.value < 0) return decryptSteps.value;
@@ -161,6 +152,41 @@ const hiddenSteps = computed(() =>
 	if (readableStep.value < 0) return [];
 
 	return decryptSteps.value.slice(readableStep.value + 1);
+});
+
+/*
+ * а) делается после в): ключ — квадрат, на котором расшифровка дала текст, способ — обратный подошедшему.
+ * Если расшифровка не нашлась (свои данные), квадрат и способ выбираются по имени.
+ */
+const chosen = computed(() =>
+{
+	if (found.value) return found.value.square;
+
+	return pick(seed.value, squares.value.length);
+});
+
+const encryptBlocks = computed(() =>
+{
+	if (text.value.trim()) return prepareRouteText(text.value, n.value, pad.value);
+
+	return null;
+});
+
+const primaryMode = computed<RouteMode>(() =>
+{
+	if (found.value) return inverseMode(found.value.mode);
+
+	return ROUTE_MODES[pick(Math.floor(seed.value / 2), ROUTE_MODES.length)]!.id;
+});
+const encryptRoutes = computed<RouteResult[]>(() =>
+{
+	const square = squares.value[chosen.value];
+
+	if (!square || !encryptBlocks.value || encryptBlocks.value.error) return [];
+
+	const order = [ primaryMode.value, ...ROUTE_MODES.map((mode) => mode.id) ].filter((v, i, all) => all.indexOf(v) === i);
+
+	return order.map((mode) => applyRoute(encryptBlocks.value!.blocks, square, mode));
 });
 
 function lineEquation (step: SingleStep): string
@@ -321,6 +347,18 @@ const givens = computed(() =>
 							</tr>
 						</tbody>
 					</table>
+					<SquareBranches
+						v-if="branches && branches.branches.length && !solution.error"
+						:branches="branches.branches"
+						:squares="squares"
+						:n="n"
+					/>
+					<p
+						v-if="branches?.truncated"
+						class="note"
+					>
+						перебор слишком длинный — показаны первые ветки
+					</p>
 					<p
 						v-if="solution.error"
 						class="error"
@@ -345,66 +383,6 @@ const givens = computed(() =>
 					</div>
 				</template>
 			</StepCard>
-
-			<template v-if="encryptBlocks && squares[chosen]">
-				<p
-					v-if="encryptBlocks.error"
-					class="error"
-				>
-					{{ encryptBlocks.error }}
-				</p>
-				<StepCard
-					v-else
-					:title="`а) Зашифровать (A${sub(chosen + 1)})`"
-				>
-					<p class="note">
-						квадрат и способ обхода выбраны по вашему имени
-					</p>
-					<p class="seq">
-						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
-					</p>
-					<div
-						v-for="(route, index) in encryptRoutes.slice(0, 1)"
-						:key="index"
-						class="space-y-3"
-					>
-						<div class="flex flex-wrap items-center gap-6">
-							<GridView
-								v-for="(block, b) in route.blocks"
-								:key="b"
-								:cells="block.grid"
-								plain
-							/>
-							<span class="answer">Y = {{ route.output }}</span>
-						</div>
-					</div>
-					<details class="rounded-lg border border-dashed border-stone-300 dark:border-stone-700">
-						<summary class="note cursor-pointer px-3 py-2 not-italic">
-							другие способы обхода
-						</summary>
-						<div class="space-y-4 border-t border-dashed border-stone-300 px-3 py-3 dark:border-stone-700">
-							<div
-								v-for="route in encryptRoutes.slice(1)"
-								:key="route.mode"
-								class="space-y-2"
-							>
-								<p class="note">
-									{{ modeLabel(route.mode) }}
-								</p>
-								<div class="flex flex-wrap items-center gap-6">
-									<GridView
-										v-for="(block, b) in route.blocks"
-										:key="b"
-										:cells="block.grid"
-								plain
-									/>
-									<span class="seq">Y = {{ route.output }}</span>
-								</div>
-							</div>
-						</div>
-					</details>
-				</StepCard>
-			</template>
 
 			<template v-if="decryptBlocks && squares.length">
 				<p
@@ -439,7 +417,8 @@ const givens = computed(() =>
 								<p
 									v-for="result in step.results"
 									:key="result.label"
-									class="seq"
+									class="seq rounded px-1"
+									:class="result === found ? 'bg-amber-100 dark:bg-amber-900/50' : ''"
 								>
 									<span class="note mr-2">{{ result.label }}</span>{{ result.output }}
 								</p>
@@ -487,7 +466,81 @@ const givens = computed(() =>
 							X = {{ readable }}
 						</p>
 						<TranslationLine :text="readable" />
+						<p
+							v-if="found && squares.length > 1"
+							class="seq"
+						>
+							Ключ: A{{ sub(found.square + 1) }}
+						</p>
 					</template>
+				</StepCard>
+			</template>
+
+			<template v-if="encryptBlocks && squares[chosen]">
+				<p
+					v-if="encryptBlocks.error"
+					class="error"
+				>
+					{{ encryptBlocks.error }}
+				</p>
+				<StepCard
+					v-else
+					:title="`а) Зашифровать (A${sub(chosen + 1)})`"
+				>
+					<p class="note">
+						<template v-if="found">
+							ключ и способ обхода — из пункта в)
+						</template>
+						<template v-else>
+							квадрат и способ обхода выбраны по вашему имени
+						</template>
+					</p>
+					<p class="seq">
+						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
+					</p>
+					<div
+						v-for="(route, index) in encryptRoutes.slice(0, 1)"
+						:key="index"
+						class="space-y-3"
+					>
+						<div class="flex flex-wrap items-center gap-6">
+							<GridView
+								v-for="(block, b) in route.blocks"
+								:key="b"
+								:cells="block.grid"
+								plain
+							/>
+							<span class="answer">Y = {{ route.output }}</span>
+						</div>
+					</div>
+					<details
+						v-if="!found"
+						class="rounded-lg border border-dashed border-stone-300 dark:border-stone-700"
+					>
+						<summary class="note cursor-pointer px-3 py-2 not-italic">
+							другие способы обхода
+						</summary>
+						<div class="space-y-4 border-t border-dashed border-stone-300 px-3 py-3 dark:border-stone-700">
+							<div
+								v-for="route in encryptRoutes.slice(1)"
+								:key="route.mode"
+								class="space-y-2"
+							>
+								<p class="note">
+									{{ modeLabel(route.mode) }}
+								</p>
+								<div class="flex flex-wrap items-center gap-6">
+									<GridView
+										v-for="(block, b) in route.blocks"
+										:key="b"
+										:cells="block.grid"
+										plain
+									/>
+									<span class="seq">Y = {{ route.output }}</span>
+								</div>
+							</div>
+						</div>
+					</details>
 				</StepCard>
 			</template>
 		</template>

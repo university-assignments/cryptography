@@ -294,6 +294,22 @@ export const ROUTE_MODES: { id: RouteMode; label: string; short: string }[] = [
 	{ id: 'numbers-cols', label: 'k-ю букву ставим в клетку с номером k, читаем по столбцам', short: 'по номерам → по столбцам' },
 ];
 
+/** Обратный способ: расшифровали способом m — значит, шифровали способом inverseMode(m). */
+export function inverseMode (mode: RouteMode): RouteMode
+{
+	switch (mode)
+	{
+		case 'rows-numbers':
+			return 'numbers-rows';
+		case 'numbers-rows':
+			return 'rows-numbers';
+		case 'cols-numbers':
+			return 'numbers-cols';
+		case 'numbers-cols':
+			return 'cols-numbers';
+	}
+}
+
 /** Перестановка маршрута: output[i] = text[perm[i]] (индексы с нуля). */
 export function routePermutation (square: Square, mode: RouteMode): number[]
 {
