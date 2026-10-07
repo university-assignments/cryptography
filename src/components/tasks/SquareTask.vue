@@ -31,6 +31,7 @@ import {
 	parseGrid,
 	prepareRouteText,
 	ROUTE_MODES,
+	routeDescription,
 	serializeGrid,
 	solve,
 } from '@/lib/magic-square';
@@ -515,6 +516,9 @@ const givens = computed(() =>
 					</p>
 					<p class="seq">
 						X = {{ unpadded(encryptBlocks) }}<span class="pad">{{ padTail(encryptBlocks) }}</span>
+					</p>
+					<p class="text-sm">
+						{{ routeDescription(primaryMode, `A${sub(chosen + 1)}`) }}
 					</p>
 					<div
 						v-for="(route, index) in encryptRoutes.slice(0, 1)"

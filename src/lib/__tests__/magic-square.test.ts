@@ -3,6 +3,7 @@ import {
 	analyze,
 	applyRoute,
 	inverseMode,
+	routeDescription,
 	invertPermutation,
 	parseGrid,
 	prepareRouteText,
@@ -191,5 +192,15 @@ describe('магический квадрат — расписывание по 
 		const grid = parseGrid('.,.,.;.,5,.;.,.,.', 3)!;
 
 		expect(analyze(grid).rounds).toHaveLength(1);
+	});
+});
+
+describe('магический квадрат — описание способа шифрования', () =>
+{
+	it('для каждого способа своя строка с именем ключа', () =>
+	{
+		expect(routeDescription('numbers-rows', 'A₁')).toBe('k-ю букву текста записываем в клетку A₁ с номером k, читаем по строкам.');
+		expect(routeDescription('cols-numbers', 'A₂')).toBe('Текст записываем в квадрат по столбцам, читаем в порядке номеров клеток A₂.');
+		expect(new Set([ 'rows-numbers', 'cols-numbers', 'numbers-rows', 'numbers-cols' ].map((m) => routeDescription(m as never, 'A₁'))).size).toBe(4);
 	});
 });

@@ -328,6 +328,22 @@ export const ROUTE_MODES: { id: RouteMode; label: string; short: string }[] = [
 	{ id: 'numbers-cols', label: 'k-ю букву ставим в клетку с номером k, читаем по столбцам', short: 'по номерам → по столбцам' },
 ];
 
+/** Как зашифровали — строка для тетради; key — имя квадрата («A₁»). */
+export function routeDescription (mode: RouteMode, key: string): string
+{
+	switch (mode)
+	{
+		case 'rows-numbers':
+			return `Текст записываем в квадрат по строкам, читаем в порядке номеров клеток ${key}.`;
+		case 'cols-numbers':
+			return `Текст записываем в квадрат по столбцам, читаем в порядке номеров клеток ${key}.`;
+		case 'numbers-rows':
+			return `k-ю букву текста записываем в клетку ${key} с номером k, читаем по строкам.`;
+		case 'numbers-cols':
+			return `k-ю букву текста записываем в клетку ${key} с номером k, читаем по столбцам.`;
+	}
+}
+
 /** Обратный способ: расшифровали способом m — значит, шифровали способом inverseMode(m). */
 export function inverseMode (mode: RouteMode): RouteMode
 {
