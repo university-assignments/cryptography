@@ -165,3 +165,31 @@ describe('магический квадрат — обратный способ 
 		expect(inverseMode(inverseMode(mode))).toBe(mode);
 	});
 });
+
+describe('магический квадрат — расписывание по кругам', () =>
+{
+	it('вариант 5: сначала все линии исходного квадрата и a₂₃ = 11, затем квадрат с a₂₃ = 11 и линии заново', () =>
+	{
+		const { rounds } = analyze(V5);
+
+		expect(rounds).toHaveLength(2);
+		expect(rounds[0]!.grid).toEqual(V5);
+		expect(rounds[0]!.singles).toMatchObject([{ cell: [ 1, 2 ], value: 11 }]);
+
+		/* На исходном квадрате 11 ещё свободно: a₃₃ + a₃₄ = 15 → 13+2, 11+4, 10+5. */
+		expect(rounds[0]!.pairs.find((p) => p.line.name === 'строка 3')).toMatchObject({ target: 15, candidates: [[ 2, 13 ], [ 4, 11 ], [ 5, 10 ]] });
+
+		/* После a₂₃ = 11: строка 2 и столбец 3 становятся парами, 11+4 пропадает. */
+		expect(rounds[1]!.grid[1]![2]).toBe(11);
+		expect(rounds[1]!.singles).toEqual([]);
+		expect(rounds[1]!.pairs.find((p) => p.line.name === 'строка 2')).toMatchObject({ target: 15 });
+		expect(rounds[1]!.pairs.find((p) => p.line.name === 'строка 3')).toMatchObject({ candidates: [[ 2, 13 ], [ 5, 10 ]] });
+	});
+
+	it('без однозначных клеток — один круг', () =>
+	{
+		const grid = parseGrid('.,.,.;.,5,.;.,.,.', 3)!;
+
+		expect(analyze(grid).rounds).toHaveLength(1);
+	});
+});

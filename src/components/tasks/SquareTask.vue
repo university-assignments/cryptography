@@ -304,24 +304,60 @@ const givens = computed(() =>
 					<span class="inline-flex items-center gap-2 text-sm">A = <MatrixView :rows="grid" /></span>
 					<TexMath :tex="`S = \\dfrac{(n^2 + 1)\\,n}{2} = \\dfrac{(${n}^2 + 1)\\cdot ${n}}{2} = ${analysis.sum}`" />
 				</div>
-				<table
-					v-if="analysis.singles.length"
-					class="text-sm"
+				<!-- Круги: расписываем все линии для квадрата; определились клетки — перерисовываем квадрат с ними и расписываем заново. -->
+				<template
+					v-for="(round, k) in analysis.rounds"
+					:key="k"
 				>
-					<tbody>
-						<tr
-							v-for="(step, i) in analysis.singles"
-							:key="i"
-						>
-							<td class="py-0.5 pr-10">
-								{{ lineEquation(step) }}
-							</td>
-							<td class="py-0.5">
-								{{ cellName(step.cell) }} = {{ step.value }}
-							</td>
-						</tr>
-					</tbody>
-				</table>
+					<span
+						v-if="k > 0"
+						class="inline-flex items-center gap-2 text-sm"
+					>A = <MatrixView :rows="round.grid" /></span>
+					<div
+						v-if="round.pairs.length"
+						class="overflow-x-auto"
+					>
+						<table class="text-sm whitespace-nowrap">
+							<tbody>
+								<tr
+									v-for="(eq, i) in round.pairs"
+									:key="i"
+								>
+									<td class="py-0.5 pr-10">
+										{{ pairEquation(eq) }}
+									</td>
+									<td
+										v-for="([p, q], j) in eq.candidates"
+										:key="j"
+										class="py-0.5 pr-8"
+									>
+										{{ q }}+{{ p }}
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div
+						v-if="round.singles.length"
+						class="overflow-x-auto"
+					>
+						<table class="text-sm whitespace-nowrap">
+							<tbody>
+								<tr
+									v-for="(step, i) in round.singles"
+									:key="i"
+								>
+									<td class="py-0.5 pr-10">
+										{{ lineEquation(step) }}
+									</td>
+									<td class="py-0.5">
+										{{ cellName(step.cell) }} = {{ step.value }}
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</template>
 				<p
 					v-if="analysis.error"
 					class="error"
@@ -329,28 +365,6 @@ const givens = computed(() =>
 					{{ analysis.error }}
 				</p>
 				<template v-else>
-					<table
-						v-if="analysis.pairs.length"
-						class="text-sm"
-					>
-						<tbody>
-							<tr
-								v-for="(eq, i) in analysis.pairs"
-								:key="i"
-							>
-								<td class="py-0.5 pr-10">
-									{{ pairEquation(eq) }}
-								</td>
-								<td
-									v-for="([p, q], j) in eq.candidates"
-									:key="j"
-									class="py-0.5 pr-8"
-								>
-									{{ q }}+{{ p }}
-								</td>
-							</tr>
-						</tbody>
-					</table>
 					<SquareAttempts
 						v-if="attemptsShown"
 						:branches="branches!.branches"

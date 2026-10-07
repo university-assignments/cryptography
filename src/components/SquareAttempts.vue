@@ -24,18 +24,12 @@ const highlight = (attempt: Attempt): Set<string> => new Set(attempt.leaf.bad.ma
 
 <template>
 	<div class="space-y-5">
+		<!-- Как на практике: сначала что подставили и почему, под этим — квадрат попытки. -->
 		<div
 			v-for="(attempt, i) in list"
 			:key="i"
-			class="flex flex-wrap items-center gap-x-6 gap-y-2"
+			class="space-y-2"
 		>
-			<span class="inline-flex items-center gap-2 text-sm">
-				<template v-if="attempt.leaf.square">{{ label(attempt.leaf.square) }}</template>
-				<MatrixView
-					:rows="attempt.leaf.state"
-					:highlight="highlight(attempt)"
-				/>
-			</span>
 			<div class="space-y-0.5 text-sm">
 				<p
 					v-for="(branch, j) in attempt.path"
@@ -44,6 +38,13 @@ const highlight = (attempt: Attempt): Set<string> => new Set(attempt.leaf.bad.ma
 					{{ stepText(branch, n) }}
 				</p>
 			</div>
+			<span class="inline-flex items-center gap-2 text-sm">
+				<template v-if="attempt.leaf.square">{{ label(attempt.leaf.square) }}</template>
+				<MatrixView
+					:rows="attempt.leaf.state"
+					:highlight="highlight(attempt)"
+				/>
+			</span>
 		</div>
 	</div>
 </template>
