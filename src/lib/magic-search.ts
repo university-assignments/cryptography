@@ -38,6 +38,19 @@ export interface Branch
 
 	/** Ветка дошла до конца — это одно из значений ключа. */
 	square?: Square;
+
+	/** Квадрат этой попытки, как его рисуют в тетради: неподходящее число стоит в своей клетке. */
+	state: Grid;
+
+	/** Клетки, из-за которых попытка не подходит. */
+	bad: Pos[];
+}
+
+/** Попытка до конца: путь веток от первой подстановки до квадрата или отказа. */
+export interface Attempt
+{
+	path: Branch[];
+	leaf: Branch;
 }
 
 export interface Search
@@ -106,6 +119,34 @@ export function search (input: Grid): Search | null
 	};
 
 	/* Ветвимся по линии с наименьшим числом неизвестных — так перебор короче всего. */
+	/* Снимок квадрата попытки; неподходящее число вписывается в клетку и выделяется. */
+	function finish (branch: Branch, grid: Grid): Branch
+	{
+		const state = grid.map((row) => [ ...row ]);
+		const conflict = branch.conflict;
+
+		branch.state = state;
+
+		if (!conflict) return branch;
+
+		switch (conflict.kind)
+		{
+			case 'range':
+			case 'used':
+				state[conflict.step.cell[0]]![conflict.step.cell[1]] = conflict.step.value;
+				branch.bad = [ conflict.step.cell ];
+				break;
+			case 'sum':
+				branch.bad = conflict.line.cells;
+				break;
+			case 'none':
+				branch.bad = conflict.cells;
+				break;
+		}
+
+		return branch;
+	}
+
 	function choose (grid: Grid): { children: Branch[]; conflict?: Conflict }
 	{
 		let best: { line: Line; unknown: Pos[] } | null = null;
@@ -163,7 +204,7 @@ export function search (input: Grid): Search | null
 		count += 1;
 
 		const grid = from.map((row) => [ ...row ]);
-		const branch: Branch = { choice, derived: [], children: [] };
+		const branch: Branch = { choice, derived: [], children: [], state: grid, bad: [] };
 
 		for (const { cell, value } of choice) grid[cell[0]]![cell[1]] = value;
 
@@ -172,7 +213,7 @@ export function search (input: Grid): Search | null
 			branch.conflict ??= sumConflict(grid, cell);
 		}
 
-		if (branch.conflict) return branch;
+		if (branch.conflict) return finish(branch, grid);
 
 		let progress = true;
 
@@ -192,21 +233,21 @@ export function search (input: Grid): Search | null
 				{
 					branch.conflict = { kind: 'range', step };
 
-					return branch;
+					return finish(branch, grid);
 				}
 
 				if (used(grid).has(step.value))
 				{
 					branch.conflict = { kind: 'used', step };
 
-					return branch;
+					return finish(branch, grid);
 				}
 
 				grid[step.cell[0]]![step.cell[1]] = step.value;
 				branch.derived.push(step);
 
 				branch.conflict = sumConflict(grid, step.cell);
-				if (branch.conflict) return branch;
+				if (branch.conflict) return finish(branch, grid);
 
 				progress = true;
 				break;
@@ -217,7 +258,7 @@ export function search (input: Grid): Search | null
 		{
 			branch.square = grid.map((row) => row.map((v) => v!));
 
-			return branch;
+			return finish(branch, grid);
 		}
 
 		const next = choose(grid);
@@ -225,7 +266,7 @@ export function search (input: Grid): Search | null
 		branch.children = next.children;
 		branch.conflict = next.conflict;
 
-		return branch;
+		return finish(branch, grid);
 	}
 
 	if (base.every((row) => row.every((v) => v !== null))) return { branches: [], truncated };
@@ -246,7 +287,34 @@ export function leaves (branches: Branch[]): Square[]
 	});
 }
 
+/** Попытки по порядку — для каждой рисуется свой квадрат. */
+export function attempts (branches: Branch[], path: Branch[] = []): Attempt[]
+{
+	return branches.flatMap((branch) =>
+	{
+		const next = [ ...path, branch ];
+
+		if (branch.children.length === 0) return [{ path: next, leaf: branch }];
+
+		return attempts(branch.children, next);
+	});
+}
+
 /* ---------- Текст строк перебора, как его пишут в тетради ---------- */
+
+/** «a₁₁ = 2, a₁₂ = 11 → a₂₁ = 19 − 2 = 17 > 16 — не подходит» */
+export function stepText (branch: Branch, n: number): string
+{
+	const tail = [ derivedText(branch) ];
+
+	if (branch.conflict) tail.push(conflictText(branch.conflict, n));
+
+	const rest = tail.filter((part) => part.length > 0).join(', ');
+
+	if (rest.length === 0) return choiceText(branch);
+
+	return `${choiceText(branch)} → ${rest}`;
+}
 
 export function choiceText (branch: Branch): string
 {

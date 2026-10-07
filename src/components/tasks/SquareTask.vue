@@ -6,7 +6,7 @@ import GridEditor from '@/components/GridEditor.vue';
 import GridView from '@/components/GridView.vue';
 import MatrixView from '@/components/MatrixView.vue';
 import ResetButton from '@/components/ResetButton.vue';
-import SquareBranches from '@/components/SquareBranches.vue';
+import SquareAttempts from '@/components/SquareAttempts.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
 import TranslationLine from '@/components/TranslationLine.vue';
@@ -74,6 +74,10 @@ const branches = computed(() =>
 
 	return null;
 });
+
+/* Перебор показан целиком — квадраты A₁, A₂ уже нарисованы в нём, отдельно не повторяем. */
+const attemptsShown = computed(() => Boolean(branches.value && branches.value.branches.length > 0 && !solution.value.error));
+const allInAttempts = computed(() => attemptsShown.value && !branches.value!.truncated);
 
 const decryptBlocks = computed(() =>
 {
@@ -347,9 +351,9 @@ const givens = computed(() =>
 							</tr>
 						</tbody>
 					</table>
-					<SquareBranches
-						v-if="branches && branches.branches.length && !solution.error"
-						:branches="branches.branches"
+					<SquareAttempts
+						v-if="attemptsShown"
+						:branches="branches!.branches"
 						:squares="squares"
 						:n="n"
 					/>
@@ -372,7 +376,7 @@ const givens = computed(() =>
 						Ни один квадрат не удовлетворяет условиям.
 					</p>
 					<div
-						v-else
+						v-else-if="!allInAttempts"
 						class="flex flex-wrap gap-6"
 					>
 						<span
