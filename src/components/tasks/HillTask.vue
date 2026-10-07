@@ -10,6 +10,7 @@ import RingName from '@/components/RingName.vue';
 import SequenceLine from '@/components/SequenceLine.vue';
 import StepCard from '@/components/StepCard.vue';
 import TaskStatement from '@/components/TaskStatement.vue';
+import TexMath from '@/components/TexMath.vue';
 import TranslationLine from '@/components/TranslationLine.vue';
 import VectorView from '@/components/VectorView.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
@@ -22,7 +23,7 @@ import {
 } from '@/lib/alphabet';
 import { rowExpression } from '@/lib/format';
 import { type HillBlock, hillDecrypt, hillEncrypt } from '@/lib/hill';
-import { modMatrix, parseMatrix, parseVector } from '@/lib/matrix';
+import { parseMatrix, parseVector } from '@/lib/matrix';
 
 const props = defineProps<{ preset?: VariantPreset }>();
 
@@ -48,7 +49,6 @@ const pad = useQueryParam('pad', () => props.preset?.hill.pad ?? 'X');
 const alphabet = computed(() => ALPHABETS[isAlphabetId(alpha.value)
 	? alpha.value
 	: 'lat']);
-const m = computed(() => alphabet.value.letters.length);
 
 const params = computed(() =>
 {
@@ -257,13 +257,19 @@ function blockTitle (block: HillBlock): string
 						:values="decrypted.y"
 						:group="blockSize"
 					/>
-					<div class="space-y-2 text-sm">
-						<p class="seq">
-							det A = {{ decrypted.inverse.detMod }}
-						</p>
-						<div class="flex flex-wrap items-center gap-6 overflow-x-auto">
-							<span class="inline-flex items-center gap-2">Ã = <MatrixView :rows="modMatrix(decrypted.inverse.adjugate, m)" /></span>
-							<span class="inline-flex items-center gap-2">A⁻¹ = {{ decrypted.inverse.detInverse }} · Ã = <MatrixView :rows="decrypted.inverse.inverse" /></span>
+					<!-- Как на практике: формула, det и обратный к нему, Ã, затем det⁻¹ · Ãᵀ с уже транспонированной Ã. -->
+					<div class="space-y-3 text-sm">
+						<TexMath tex="A^{-1} = \dfrac{1}{\det A}\cdot\tilde{A}^{T}" />
+						<div class="flex flex-wrap items-center gap-x-10 gap-y-2">
+							<span class="seq">det A = {{ decrypted.inverse.detMod }}</span>
+							<TexMath :tex="`\\dfrac{1}{${decrypted.inverse.detMod}} = ${decrypted.inverse.detMod}^{-1} = ${decrypted.inverse.detInverse}`" />
+						</div>
+						<span class="inline-flex items-center gap-2">Ã = <MatrixView :rows="decrypted.inverse.cofactors" /></span>
+						<div class="flex flex-wrap items-center gap-2 overflow-x-auto">
+							<span>A⁻¹ = {{ decrypted.inverse.detInverse }} ·</span>
+							<MatrixView :rows="decrypted.inverse.adjugate" />
+							<span>=</span>
+							<MatrixView :rows="decrypted.inverse.inverse" />
 						</div>
 					</div>
 					<div

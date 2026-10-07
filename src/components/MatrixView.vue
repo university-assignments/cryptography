@@ -7,6 +7,9 @@ withDefaults(defineProps<{
 	/** Ключи «r,c» выделенных клеток. */
 	highlight?: Set<string>;
 }>(), { highlight: () => new Set<string>() });
+
+/* Отрицательные (алгебраические дополнения) — с типографским минусом. */
+const show = (value: number | string): string => String(value).replace(/^-/u, '−');
 </script>
 
 <template>
@@ -32,7 +35,7 @@ withDefaults(defineProps<{
 						v-else
 						class="rounded text-right"
 						:class="highlight.has(`${r},${c}`) ? 'bg-amber-200 font-semibold dark:bg-amber-800' : ''"
-					>{{ value }}</span>
+					>{{ show(value) }}</span>
 				</template>
 			</template>
 		</span>
