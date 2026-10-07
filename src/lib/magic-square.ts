@@ -114,8 +114,18 @@ export interface Analysis
 	grid: Grid;
 	singles: SingleStep[];
 	pairs: PairEquation[];
+
+	/** Круги расписывания: квадрат, клетки, которые из него определяются, и варианты пар. */
+	rounds: Round[];
 	available: number[];
 	error?: string;
+}
+
+export interface Round
+{
+	grid: Grid;
+	singles: SingleStep[];
+	pairs: PairEquation[];
 }
 
 function knownSum (grid: Grid, line: Line): { known: number[]; unknown: Pos[] }
@@ -141,45 +151,8 @@ function availableNumbers (grid: Grid, n: number): number[]
 	return [ ...Array(n * n).keys() ].map((i) => i + 1).filter((v) => !used.has(v));
 }
 
-/** Как в тетради: сначала клетки, которые определяются однозначно, затем уравнения для пар. */
-export function analyze (input: Grid): Analysis
+function pairEquations (grid: Grid, allLines: Line[], sum: number, n: number): PairEquation[]
 {
-	const n = input.length;
-	const sum = magicSum(n);
-	const grid: Grid = input.map((row) => [ ...row ]);
-	const allLines = lines(n);
-	const singles: SingleStep[] = [];
-	const givens = grid.flat().filter((v): v is number => v !== null);
-
-	if (givens.some((v) => v < 1 || v > n * n)) return { n, sum, grid, singles, pairs: [], available: [], error: `Значения должны быть от 1 до ${n * n}.` };
-	if (new Set(givens).size !== givens.length) return { n, sum, grid, singles, pairs: [], available: [], error: 'Значения в квадрате не должны повторяться.' };
-
-	let changed = true;
-
-	while (changed)
-	{
-		changed = false;
-
-		for (const line of allLines)
-		{
-			const { known, unknown } = knownSum(grid, line);
-
-			if (unknown.length !== 1) continue;
-
-			const value = sum - known.reduce((acc, v) => acc + v, 0);
-			const [ cell ] = unknown;
-
-			if (value < 1 || value > n * n || !availableNumbers(grid, n).includes(value))
-			{
-				return { n, sum, grid, singles, pairs: [], available: availableNumbers(grid, n), error: `${line.name}: ${cellName(cell!)} = ${value} — невозможно, квадрат с такими значениями не существует.` };
-			}
-
-			grid[cell![0]]![cell![1]] = value;
-			singles.push({ line, cell: cell!, value, known });
-			changed = true;
-		}
-	}
-
 	const available = availableNumbers(grid, n);
 	const pairs: PairEquation[] = [];
 
@@ -202,7 +175,68 @@ export function analyze (input: Grid): Analysis
 		pairs.push({ line, cells: [ unknown[0]!, unknown[1]! ], target, candidates });
 	}
 
-	return { n, sum, grid, singles, pairs, available };
+	return pairs;
+}
+
+/**
+ * Как в тетради, по кругам: для текущего квадрата расписываем все линии — с одной неизвестной
+ * (клетка определяется сразу) и с двумя (варианты пар). Если клетки определились —
+ * квадрат перерисовывается с ними и всё расписывается заново.
+ */
+export function analyze (input: Grid): Analysis
+{
+	const n = input.length;
+	const sum = magicSum(n);
+	const grid: Grid = input.map((row) => [ ...row ]);
+	const allLines = lines(n);
+	const singles: SingleStep[] = [];
+	const rounds: Round[] = [];
+	const givens = grid.flat().filter((v): v is number => v !== null);
+	const fail = (error: string): Analysis => ({ n, sum, grid, singles, pairs: [], rounds, available: availableNumbers(grid, n), error });
+
+	if (givens.some((v) => v < 1 || v > n * n)) return fail(`Значения должны быть от 1 до ${n * n}.`);
+	if (new Set(givens).size !== givens.length) return fail('Значения в квадрате не должны повторяться.');
+
+	for (;;)
+	{
+		const round: Round = { grid: grid.map((row) => [ ...row ]), singles: [], pairs: pairEquations(grid, allLines, sum, n) };
+		const free = availableNumbers(grid, n);
+		const found = new Map<string, number>();
+
+		rounds.push(round);
+
+		for (const line of allLines)
+		{
+			const { known, unknown } = knownSum(round.grid, line);
+
+			if (unknown.length !== 1) continue;
+
+			const value = sum - known.reduce((acc, v) => acc + v, 0);
+			const cell = unknown[0]!;
+			const key = cell.join(',');
+			const clash = [ ...found ].some(([ other, v ]) => v === value && other !== key);
+
+			if (value < 1 || value > n * n || !free.includes(value) || clash || found.has(key) && found.get(key) !== value)
+			{
+				return fail(`${line.name}: ${cellName(cell)} = ${value} — невозможно, квадрат с такими значениями не существует.`);
+			}
+
+			if (found.has(key)) continue;
+
+			found.set(key, value);
+			round.singles.push({ line, cell, value, known });
+		}
+
+		if (round.singles.length === 0) break;
+
+		for (const step of round.singles)
+		{
+			grid[step.cell[0]]![step.cell[1]] = step.value;
+			singles.push(step);
+		}
+	}
+
+	return { n, sum, grid, singles, pairs: rounds.at(-1)!.pairs, rounds, available: availableNumbers(grid, n) };
 }
 
 export const MAX_UNKNOWN = 12;
@@ -293,6 +327,22 @@ export const ROUTE_MODES: { id: RouteMode; label: string; short: string }[] = [
 	{ id: 'numbers-rows', label: 'k-ю букву ставим в клетку с номером k, читаем по строкам', short: 'по номерам → по строкам' },
 	{ id: 'numbers-cols', label: 'k-ю букву ставим в клетку с номером k, читаем по столбцам', short: 'по номерам → по столбцам' },
 ];
+
+/** Как зашифровали — строка для тетради; key — имя квадрата («A₁»). */
+export function routeDescription (mode: RouteMode, key: string): string
+{
+	switch (mode)
+	{
+		case 'rows-numbers':
+			return `Текст записываем в квадрат по строкам, читаем в порядке номеров клеток ${key}.`;
+		case 'cols-numbers':
+			return `Текст записываем в квадрат по столбцам, читаем в порядке номеров клеток ${key}.`;
+		case 'numbers-rows':
+			return `k-ю букву текста записываем в клетку ${key} с номером k, читаем по строкам.`;
+		case 'numbers-cols':
+			return `k-ю букву текста записываем в клетку ${key} с номером k, читаем по столбцам.`;
+	}
+}
 
 /** Обратный способ: расшифровали способом m — значит, шифровали способом inverseMode(m). */
 export function inverseMode (mode: RouteMode): RouteMode
