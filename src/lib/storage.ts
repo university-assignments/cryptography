@@ -25,6 +25,19 @@ export function readStored (key: string): string
 	}
 }
 
+/** Прочитать значение только под префиксом — для ключей, которых в старых версиях сайта не было. */
+export function readOwn (key: string): string
+{
+	try
+	{
+		return localStorage.getItem(PREFIX + key) ?? '';
+	}
+	catch
+	{
+		return '';
+	}
+}
+
 /** Сохранить значение; пустая строка удаляет ключ. */
 export function writeStored (key: string, value: string): void
 {

@@ -2,12 +2,22 @@
 import { type Component, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import CaesarTask from '@/components/tasks/CaesarTask.vue';
+import FieldPolyTask from '@/components/tasks/FieldPolyTask.vue';
 import HillTask from '@/components/tasks/HillTask.vue';
+import LrsCipherTask from '@/components/tasks/LrsCipherTask.vue';
+import LrsMinimalTask from '@/components/tasks/LrsMinimalTask.vue';
 import PlayfairTask from '@/components/tasks/PlayfairTask.vue';
 import SquareTask from '@/components/tasks/SquareTask.vue';
 import VigenereTask from '@/components/tasks/VigenereTask.vue';
 import { findVariant } from '@/data/work-1/variants';
-import { CUSTOM_VARIANT, findWork, type TaskSlug } from '@/data/works';
+import { findVariant2 } from '@/data/work-2/variants';
+import {
+	type TaskSlug,
+	CUSTOM_VARIANT,
+	findWork,
+	taskLabel,
+	taskNumber,
+} from '@/data/works';
 
 const props = defineProps<{ work: string; variant: string; task: string }>();
 
@@ -18,7 +28,10 @@ const preset = computed(() =>
 {
 	if (isCustom.value) return undefined;
 
-	return findVariant(Number(props.variant));
+	/* Условия вариантов у каждой работы свои. */
+	return work.value?.id === 2
+		? findVariant2(Number(props.variant))
+		: findVariant(Number(props.variant));
 });
 const valid = computed(() => Boolean(work.value && task.value && (isCustom.value || preset.value)));
 
@@ -28,6 +41,9 @@ const components: Record<TaskSlug, Component> = {
 	vigenere: VigenereTask,
 	caesar: CaesarTask,
 	playfair: PlayfairTask,
+	'lrs-minimal': LrsMinimalTask,
+	'lrs-cipher': LrsCipherTask,
+	'field-poly': FieldPolyTask,
 };
 
 const siblings = computed(() =>
@@ -47,7 +63,7 @@ const siblings = computed(() =>
 	>
 		<div>
 			<p class="text-xs font-medium uppercase tracking-wide text-stone-500">
-				{{ isCustom ? 'Свои данные' : `Вариант ${variant}` }} · Задание {{ task.id }}
+				{{ isCustom ? 'Свои данные' : `Вариант ${variant}` }} · {{ taskLabel(task) }}
 			</p>
 			<h1 class="text-2xl font-semibold tracking-tight">
 				{{ task.title }}
@@ -59,7 +75,7 @@ const siblings = computed(() =>
 
 		<component
 			:is="components[task.slug]"
-			:key="`${variant}-${task.id}`"
+			:key="`${work.id}-${variant}-${task.id}`"
 			:preset="preset"
 		/>
 
@@ -69,7 +85,7 @@ const siblings = computed(() =>
 				:to="`/work/${work.id}/variant/${variant}/task/${siblings.prev.id}`"
 				class="btn-secondary"
 			>
-				← {{ siblings.prev.id }}. {{ siblings.prev.title }}
+				← {{ taskNumber(siblings.prev) }}. {{ siblings.prev.title }}
 			</RouterLink>
 			<span v-else />
 			<RouterLink
@@ -77,7 +93,7 @@ const siblings = computed(() =>
 				:to="`/work/${work.id}/variant/${variant}/task/${siblings.next.id}`"
 				class="btn-secondary"
 			>
-				{{ siblings.next.id }}. {{ siblings.next.title }} →
+				{{ taskNumber(siblings.next) }}. {{ siblings.next.title }} →
 			</RouterLink>
 		</nav>
 	</div>

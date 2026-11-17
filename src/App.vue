@@ -3,7 +3,12 @@ import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import NameGate from '@/components/NameGate.vue';
 import { useName } from '@/composables/useName';
-import { CUSTOM_VARIANT, findWork, SUBJECT } from '@/data/works';
+import {
+	CUSTOM_VARIANT,
+	findWork,
+	SUBJECT,
+	taskLabel,
+} from '@/data/works';
 
 const { name, hasName, setName } = useName();
 const route = useRoute();
@@ -36,7 +41,7 @@ const crumbs = computed<Crumb[]>(() =>
 
 	const task = work.tasks.find((t) => t.id === Number(route.params.task));
 
-	if (task) list.push({ label: `Задание ${task.id}` });
+	if (task) list.push({ label: taskLabel(task) });
 
 	return list;
 });

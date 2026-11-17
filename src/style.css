@@ -60,6 +60,11 @@
 		@apply mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300;
 	}
 
+	/* Строка формул: переносится между частями, длинная часть прокручивается. */
+	.tex-line {
+		@apply flex flex-wrap items-baseline gap-x-2 gap-y-2 overflow-x-auto py-0.5;
+	}
+
 	/* Дуга над группой чисел, как в тетради. */
 	.arc {
 		@apply relative px-0.5 before:absolute before:inset-x-0 before:-top-0.5 before:h-2.5 before:rounded-t-[50%] before:border-t before:border-current before:content-[''];

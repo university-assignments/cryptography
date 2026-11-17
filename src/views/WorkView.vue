@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { CUSTOM_VARIANT, findWork } from '@/data/works';
+import { type TaskDef, CUSTOM_VARIANT, findWork } from '@/data/works';
 
 const props = defineProps<{ work: string }>();
 const work = computed(() => findWork(Number(props.work)));
@@ -10,6 +10,15 @@ const variants = computed(() =>
 	if (work.value) return [ ...Array(work.value.variants).keys() ].map((i) => i + 1);
 
 	return [];
+});
+
+/** Задания по частям; работа без частей — одна группа без заголовка. */
+const groups = computed<{ title: string; tasks: TaskDef[] }[]>(() =>
+{
+	if (!work.value) return [];
+	if (!work.value.parts) return [{ title: '', tasks: work.value.tasks }];
+
+	return work.value.parts.map((part) => ({ title: part.title, tasks: work.value!.tasks.filter((task) => task.part === part.id) }));
 });
 </script>
 
@@ -52,7 +61,7 @@ const variants = computed(() =>
 					Свои данные
 				</h2>
 				<p class="hint mt-1">
-					Те же задания с пустыми полями: матрица, ключи, тексты, алфавит — всё задаётся вручную.
+					Те же задания с пустыми полями — все данные условия задаются вручную.
 				</p>
 			</RouterLink>
 		</section>
@@ -61,15 +70,26 @@ const variants = computed(() =>
 			<h2 class="step-title">
 				Задания
 			</h2>
-			<ol class="list-inside list-decimal space-y-1">
-				<li
-					v-for="task in work.tasks"
-					:key="task.id"
+			<template
+				v-for="group in groups"
+				:key="group.title"
+			>
+				<h3
+					v-if="group.title"
+					class="pt-1 text-xs font-medium uppercase tracking-wide text-stone-500"
 				>
-					<span class="font-medium">{{ task.title }}</span>
-					<span class="hint"> — {{ task.subtitle }}</span>
-				</li>
-			</ol>
+					{{ group.title }}
+				</h3>
+				<ol class="list-inside list-decimal space-y-1">
+					<li
+						v-for="task in group.tasks"
+						:key="task.id"
+					>
+						<span class="font-medium">{{ task.title }}</span>
+						<span class="hint"> — {{ task.subtitle }}</span>
+					</li>
+				</ol>
+			</template>
 		</section>
 	</div>
 	<p
