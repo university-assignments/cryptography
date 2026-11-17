@@ -17,7 +17,7 @@
 
 ## Стек
 
-Vue 3 + Vite + TypeScript, vue-router, Tailwind CSS v4, PhotoSwipe. Линт: oxlint + ESLint (`@stylistic`, `eslint-plugin-vue`), типы — `vue-tsc`, тесты — Vitest. Деплой — GitHub Actions собирает `dist/` и публикует в ветку `gh-pages` (Pages: Deploy from a branch → `gh-pages` / root); `404.html` = копия `index.html` для history-роутинга, `.nojekyll` отключает Jekyll.
+Vue 3 + Vite + TypeScript, vue-router, Tailwind CSS v4, PhotoSwipe. Линт: oxlint + ESLint (`@stylistic`, `eslint-plugin-vue`), типы — `vue-tsc`, тесты — Vitest. Деплой — по релизу: публикация GitHub Release (`vX.Y.Z`) запускает GitHub Actions, который собирает `dist/` и публикует в ветку `gh-pages` (Pages: Deploy from a branch → `gh-pages` / root); коммит в `main` сам ничего не выкатывает; `404.html` = копия `index.html` для history-роутинга, `.nojekyll` отключает Jekyll.
 
 ```sh
 pnpm install

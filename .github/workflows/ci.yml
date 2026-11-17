@@ -1,8 +1,9 @@
 name: CI & Pages
 
+# Сайт публикуется релизом: коммит в main ничего не собирает и не выкатывает.
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   pull_request:
   workflow_dispatch:
 
@@ -29,7 +30,7 @@ jobs:
       - run: pnpm type-check
       - run: pnpm test
       - run: pnpm build-only
-      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      - if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -37,7 +38,7 @@ jobs:
           include-hidden-files: true
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
     needs: check
     runs-on: ubuntu-latest
     permissions:
@@ -55,4 +56,4 @@ jobs:
           force_orphan: true
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
-          commit_message: "deploy: ${{ github.sha }}"
+          commit_message: "deploy: ${{ github.event.release.tag_name || github.sha }}"
