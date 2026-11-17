@@ -1,3 +1,4 @@
+import { type FactorChain, factorChain } from './lrs-chain';
 import { mod, modInverse } from './modmath';
 import {
 	type Factorization,
@@ -10,6 +11,7 @@ import {
 	polyMonic,
 	polyMul,
 	polyScale,
+	polyTex,
 	trim,
 } from './poly';
 
@@ -94,6 +96,12 @@ export function seriesProduct (factor: Poly, period: number[], p: number): Serie
 	return { factor, head, tail, annihilating: tail.every((v) => v === 0) };
 }
 
+/** Проверка множителя; label — множитель в том виде, в каком он записан в разложении. */
+export interface LabeledProduct extends SeriesProduct
+{
+	label: string;
+}
+
 export interface MinimalRecurrence
 {
 	ok: true;
@@ -113,8 +121,11 @@ export interface MinimalRecurrence
 	/** НОД(g(x), g(x)·S(x)). */
 	common: Poly;
 
+	/** Разложение g(x) цепочкой, как в тетради: (1 − x³)(1 + x³) = … */
+	chain: FactorChain;
+
 	/** Проверки множителей — как в тетради; последняя — аннулирующий. */
-	tests: SeriesProduct[];
+	tests: LabeledProduct[];
 
 	/** Аннулирующий наименьшей степени — произведение неприводимых множителей g(x). */
 	candidate: Poly;
@@ -158,16 +169,27 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 	const factorization = factorize(g0, p);
 	const candidateFactors = factorize(candidate, p);
 
-	const tests: SeriesProduct[] = [];
+	const chain = factorChain(t, p);
+	const tests: LabeledProduct[] = [];
+	const found = (): boolean => tests.some((test) => test.annihilating);
 
-	for (const { poly } of factorization.factors)
+	/* Сначала множители последнего звена, затем неразложенные множители предыдущего, затем сам минимальный. */
+	for (const { poly, tex } of chain.factors)
 	{
-		tests.push(seriesProduct(poly, period, p));
+		if (found()) break;
 
-		if (polyEqual(poly, candidate)) break;
+		tests.push({ ...seriesProduct(poly, period, p), label: tex });
 	}
 
-	if (!tests.some((test) => test.annihilating)) tests.push(seriesProduct(candidate, period, p));
+	for (const { poly, tex } of chain.composite)
+	{
+		if (found()) break;
+		if (degree(poly) > degree(candidate) || tests.some((test) => polyEqual(test.factor, poly))) continue;
+
+		tests.push({ ...seriesProduct(poly, period, p), label: tex });
+	}
+
+	if (!found()) tests.push({ ...seriesProduct(candidate, period, p), label: polyTex(candidate) });
 
 	const scale = modInverse(candidate[0]!, p)!;
 	const g = polyScale(candidate, scale, p);
@@ -181,6 +203,7 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 		periodPoly,
 		g0,
 		factorization,
+		chain,
 		numerator,
 		common,
 		tests,

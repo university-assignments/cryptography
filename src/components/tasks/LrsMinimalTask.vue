@@ -22,6 +22,7 @@ import {
 	type Factorization,
 	type Poly,
 	degree,
+	polyEqual,
 	polyTex,
 } from '@/lib/poly';
 
@@ -117,7 +118,15 @@ const check = computed(() =>
 	return generate(solved.value.coefs, solved.value.init, solved.value.p, period.value.length * 2);
 });
 
-const candidateIsFactor = computed(() => solved.value?.candidateFactors.factors.length === 1 && solved.value.candidateFactors.factors[0]!.power === 1);
+/** Минимальный многочлен уже есть среди множителей разложения — отдельно пояснять его не нужно. */
+const candidateIsFactor = computed(() =>
+{
+	if (!solved.value) return true;
+
+	const { chain, candidate } = solved.value;
+
+	return [ ...chain.factors, ...chain.composite ].some((item) => polyEqual(item.poly, candidate));
+});
 </script>
 
 <template>
@@ -176,7 +185,12 @@ const candidateIsFactor = computed(() => solved.value?.candidateFactors.factors.
 					<TexMath :tex="`\\qquad g(x)=${polyTex(solved.g0)}`" />
 				</p>
 				<p class="tex-line">
-					<TexMath :tex="`${polyTex(solved.g0)}=1-x^{${solved.period.length}}=${factorsTex(solved.factorization)}`" />
+					<TexMath :tex="`${polyTex(solved.g0)}=1-x^{${solved.period.length}}`" />
+					<TexMath
+						v-for="(stage, i) in solved.chain.stages"
+						:key="i"
+						:tex="`=${stage}`"
+					/>
 				</p>
 				<p
 					v-if="!solved.factorization.complete"
@@ -212,14 +226,14 @@ const candidateIsFactor = computed(() => solved.value?.candidateFactors.factors.
 				>
 					<template v-if="test.annihilating && !candidateIsFactor">
 						<p class="note">
-							ни один неприводимый множитель не аннулирует; наименьшую степень даёт их произведение — g(x), делённый на НОД(g(x), g(x)·S(x))
+							ни один из множителей не аннулирует; наименьшую степень даёт произведение неприводимых — g(x), делённый на НОД(g(x), g(x)·S(x))
 						</p>
 						<p class="tex-line">
 							<TexMath :tex="`${factorsTex(solved.candidateFactors)}=${polyTex(solved.candidate)}`" />
 						</p>
 					</template>
 					<p class="tex-line">
-						<TexMath :tex="`\\bullet\\ (${polyTex(test.factor)})\\cdot S(x)=`" />
+						<TexMath :tex="`\\bullet\\ (${test.label})\\cdot S(x)=`" />
 						<template
 							v-for="(series, j) in shiftedSeries(test.factor)"
 							:key="j"

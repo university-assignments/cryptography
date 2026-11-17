@@ -22,6 +22,7 @@ import {
 	streamEncrypt,
 	toDigits,
 } from '../lrs-cipher';
+import { chainProduct } from '../lrs-chain';
 import { recurrenceTex } from '../lrs-format';
 import { polyTex } from '../poly';
 
@@ -219,5 +220,38 @@ describe('запись элемента поля', () =>
 		expect(parseElement('α³ + α + 1', 0b10011)).toBe(0b1011);
 		expect(parseElement('a3+a+1', 0b10011)).toBe(0b1011);
 		expect(parseElement('b+1', 0b10011)).toBeNull();
+	});
+});
+
+/* Разложение 1 − x⁶ — звено за звеном, как записано в тетрадях. */
+describe('разложение g(x) цепочкой', () =>
+{
+	const INTEGER = [ '(1-x^{3})(1+x^{3})', '(1-x)(1+x+x^{2})(1+x)(1-x+x^{2})' ];
+	const LAST: Record<number, string> = {
+		1: '(1+6x)(x+3)(x+5)(1+x)(x+2)(x+4)',
+		2: '(1+10x)(1+x+x^{2})(1+x)(1+10x+x^{2})',
+		3: '(1+6x)(x+3)(x+5)(1+x)(x+2)(x+4)',
+		4: '(1+6x)(x+3)(x+5)(1+x)(x+2)(x+4)',
+		5: '(1+4x)(1+x+x^{2})(1+x)(1+4x+x^{2})',
+		6: '(1+2x)(x+2)^{2}(x+1)^{3}',
+	};
+
+	it.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('вариант %i', (id, v) =>
+	{
+		const result = minimalRecurrence(parseList(v.minimal.period), v.minimal.p);
+
+		expect(result.ok && result.chain.stages).toEqual([ ...INTEGER, LAST[id] ]);
+		expect(result.ok && chainProduct(result.chain, v.minimal.p)).toEqual(result.ok && result.g0);
+	});
+
+	it('перебор идёт по множителям в порядке записи', () =>
+	{
+		const first = minimalRecurrence([ 0, 2, 2, 6, 3, 1 ], 7);
+		const fourth = minimalRecurrence([ 3, 1, 5, 4, 6, 2 ], 7);
+		const sixth = minimalRecurrence([ 0, 1, 1, 0, 2, 2 ], 3);
+
+		expect(first.ok && first.tests.map((test) => test.label)).toEqual([ '1+6x', 'x+3', 'x+5', '1+x', 'x+2', 'x+4', '1+x+x^{2}', '1+6x+x^{2}', 'x^{2}+4x+3' ]);
+		expect(fourth.ok && fourth.tests.map((test) => test.label)).toEqual([ '1+6x', 'x+3', 'x+5', '1+x', 'x+2', 'x+4' ]);
+		expect(sixth.ok && sixth.tests.map((test) => test.label)).toEqual([ '1+2x', 'x+2', 'x+1', '1+x+x^{2}', '1+2x+x^{2}' ]);
 	});
 });
