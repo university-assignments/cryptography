@@ -209,7 +209,7 @@ const FIELD: Record<number, { powers: string[]; h: string; f: string; recurrence
 	3: { powers: [ '\\alpha^{3}+1', '\\alpha^{3}+\\alpha^{2}', '\\alpha^{3}+\\alpha^{2}+1' ], h: 'x^{4}+x^{3}+1', f: 'x^{4}+x^{3}+1', recurrence: 's_{n+4}=s_{n+3}+s_{n}', order: 15 },
 	4: { powers: [ '\\alpha', '\\alpha^{3}+\\alpha', '\\alpha^{2}' ], h: 'x^{4}+x+1', f: 'x^{4}+x+1', recurrence: 's_{n+4}=s_{n+1}+s_{n}', order: 15 },
 	5: { powers: [ '\\alpha^{3}+\\alpha^{2}+\\alpha', '\\alpha+1', '\\alpha' ], h: 'x^{4}+x^{3}+1', f: 'x^{4}+x^{3}+1', recurrence: 's_{n+4}=s_{n+3}+s_{n}', order: 15 },
-	6: { powers: [ '\\alpha^{3}+\\alpha^{2}+\\alpha', '\\alpha^{3}+\\alpha', '\\alpha^{3}+\\alpha+1' ], h: 'x^{4}+x^{3}+1', f: 'x^{4}+x^{3}+1', recurrence: 's_{n+4}=s_{n+3}+s_{n}', order: 15 },
+	6: { powers: [ '\\alpha^{3}+1', '\\alpha^{3}+\\alpha^{2}', '\\alpha^{3}+\\alpha^{2}+1' ], h: 'x^{4}+x^{3}+1', f: 'x^{4}+x^{3}+1', recurrence: 's_{n+4}=s_{n+3}+s_{n}', order: 15 },
 };
 
 describe.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('часть 2, вариант %i: минимальный многочлен в F16', (id, v) =>

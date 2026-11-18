@@ -80,7 +80,10 @@ export const VARIANTS_2: Variant2Preset[] = [
 		id: 6,
 		minimal: { p: 3, period: '0,1,1,0,2,2' },
 		stream: { coefs: '1,0,2', init: INIT, encrypt: 'SIVISPACEMPARABELLUM', decrypt: 'ELVNCCGOZGLNCTA' },
-		field: { g: G_X4_X_1, beta: 'a^3+a^2+1' },
+
+		/* Новый лист: β = α³ + α + 1; на старом листе (и в тетради) было α³ + α² + 1 — ответ тот же. */
+		field: { g: G_X4_X_1, beta: 'a^3+a+1' },
+
 	},
 ];
 
