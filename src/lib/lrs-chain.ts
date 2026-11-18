@@ -187,6 +187,61 @@ export function factorChain (t: number, p: number): FactorChain
 	return { stages, factors, composite };
 }
 
+/** То же для приведённого xᵀ − 1 (как в тетради нового подтипа): звенья по убыванию степеней, затем по модулю p. */
+export function monicChainStages (t: number, p: number): string[]
+{
+	const stages: string[] = [];
+	let pieces: Piece[] = [ binomial(t, -1) ];
+	const descending = (piece: Piece): string =>
+	{
+		const coefs = piece.kind === 'minus'
+			? piece.coefs.map((v) => -v)
+			: piece.coefs;
+		const terms: string[] = [];
+
+		for (let i = coefs.length - 1; i >= 0; i--)
+		{
+			const coef = coefs[i]!;
+
+			if (coef === 0) continue;
+
+			const size = Math.abs(coef);
+			let body = i === 0
+				? String(size)
+				: i === 1
+					? 'x'
+					: `x^{${i}}`;
+
+			if (i > 0 && size !== 1) body = `${size}${body}`;
+			terms.push(coef < 0
+				? `-${body}`
+				: terms.length > 0
+					? `+${body}`
+					: body);
+		}
+
+		return terms.join('');
+	};
+
+	for (;;)
+	{
+		const next = pieces.flatMap(split);
+
+		if (next.length === pieces.length) break;
+
+		pieces = next;
+		stages.push(pieces.map((piece) => `(${descending(piece)})`).join(''));
+	}
+
+	const reduced = pieces.map((piece) => `(${polyTex(trim(piece.kind === 'minus'
+		? piece.coefs.map((v) => -v)
+		: piece.coefs, p))})`).join('');
+
+	if (reduced !== stages[stages.length - 1]) stages.push(reduced);
+
+	return stages;
+}
+
 /** Проверка: произведение множителей последнего звена равно 1 − xᵀ по модулю p. */
 export function chainProduct (chain: FactorChain, p: number): Poly
 {

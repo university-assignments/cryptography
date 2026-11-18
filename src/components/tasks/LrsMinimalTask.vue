@@ -9,7 +9,15 @@ import TexMath from '@/components/TexMath.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import { type Variant2Preset, parseList } from '@/data/work-2/variants';
 import { sub } from '@/lib/format';
-import { type SeriesProduct, generate, minimalRecurrence } from '@/lib/lrs';
+import FieldSelect from '@/components/FieldSelect.vue';
+import {
+	type DivisorTest,
+	type SeriesProduct,
+	generate,
+	minimalRecurrence,
+	shiftRegister,
+} from '@/lib/lrs';
+import { monicChainStages } from '@/lib/lrs-chain';
 import {
 	ascendingTex,
 	initialTex,
@@ -28,7 +36,15 @@ import {
 
 const props = defineProps<{ preset?: Variant2Preset }>();
 
-const KEYS = [ 'p', 'seq' ];
+const KEYS = [ 'p', 'seq', 'type' ];
+
+const SUBTYPES = [
+	{ value: 'shift', label: 'Минимальный регистр сдвига' },
+	{ value: 'feedback', label: 'Линейный регистр с обратной связью' },
+];
+
+const subtype = useQueryParam('type', () => 'shift');
+const isShift = computed(() => subtype.value !== 'feedback');
 
 const modulus = useQueryParam('p', () => String(props.preset?.minimal.p ?? ''));
 const seq = useQueryParam('seq', () => props.preset?.minimal.period ?? '');
@@ -49,6 +65,28 @@ const solved = computed(() =>
 
 	return null;
 });
+
+const shift = computed(() =>
+{
+	if (!solved.value) return null;
+
+	return shiftRegister(solved.value);
+});
+
+const chainStages = computed(() =>
+{
+	if (!solved.value) return [];
+
+	return monicChainStages(solved.value.period.length, solved.value.p);
+});
+
+/** Делитель в TeX: произведение множителей и раскрытый многочлен. */
+function divisorLabel (test: DivisorTest): string
+{
+	return test.productLabel
+		? `${test.productLabel}=${polyTex(test.factor)}`
+		: polyTex(test.factor);
+}
 
 /** (x+1)(x+2)^{2} — произведение неприводимых множителей. */
 function factorsTex (factorization: Factorization): string
@@ -132,6 +170,13 @@ const candidateIsFactor = computed(() =>
 <template>
 	<div class="space-y-4">
 		<section class="card grid gap-3 sm:grid-cols-2">
+			<div class="sm:col-span-2">
+				<FieldSelect
+					v-model="subtype"
+					label="Подтип задания"
+					:options="SUBTYPES"
+				/>
+			</div>
 			<FieldText
 				v-model="modulus"
 				label="Модуль p (простое число)"
@@ -152,8 +197,11 @@ const candidateIsFactor = computed(() =>
 
 		<TaskStatement>
 			Найти минимальное линейное однородное рекуррентное соотношение над Z{{ sub(modulus.trim()) }}, задающее последовательность
-			({{ period.join(',') }}, {{ period.join(',') }}…)
-			<span class="block">Построить линейный регистр с обратной связью, реализующий на выходе данную последовательность.</span>
+			({{ period.join(',') }}, {{ period.join(',') }}…)<template v-if="isShift">. Построить минимальный регистр сдвига, реализующий данную последовательность.</template>
+			<span
+				v-else
+				class="block"
+			>Построить линейный регистр с обратной связью, реализующий на выходе данную последовательность.</span>
 		</TaskStatement>
 
 		<p
@@ -163,7 +211,140 @@ const candidateIsFactor = computed(() =>
 			{{ result.error }}
 		</p>
 
-		<template v-if="solved">
+		<template v-if="solved && shift && isShift">
+			<StepCard title="Аннулирующий многочлен по периоду">
+				<p class="tex-line">
+					<TexMath :tex="`Z_{${solved.p}}`" />
+					<TexMath :tex="`\\qquad S=${periodicTex(solved.period)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`s_{n+${solved.period.length}}=s_{n}`" />
+					<TexMath tex="\qquad s_{i}\to x^{i}" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`x^{n+${solved.period.length}}=x^{n}`" />
+					<TexMath :tex="`\\qquad x^{${solved.period.length}}=1`" />
+					<TexMath :tex="`\\qquad x^{${solved.period.length}}-1=0`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`\\tilde f(x)=x^{${solved.period.length}}-1`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`\\tilde g(x)=x^{${solved.period.length}}\\cdot\\tilde f\\left(\\tfrac{1}{x}\\right)=x^{${solved.period.length}}\\cdot\\left(\\tfrac{1}{x^{${solved.period.length}}}-1\\right)=1-x^{${solved.period.length}}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`h(x)=(1-x^{${solved.period.length}})\\cdot(-1)=x^{${solved.period.length}}-1`" />
+					<TexMath
+						v-for="(stage, i) in chainStages"
+						:key="i"
+						:tex="`=${stage}`"
+					/>
+				</p>
+				<template
+					v-for="(root, i) in shift.roots"
+					:key="i"
+				>
+					<p class="tex-line">
+						<TexMath :tex="`h_{${i + 1}}(x)=${polyTex(root.poly)}`" />
+					</p>
+					<p class="tex-line">
+						<TexMath
+							v-for="item in root.values"
+							:key="item.x"
+							:tex="`h_{${i + 1}}(${item.x})=${item.value}\\qquad`"
+						/>
+					</p>
+					<p
+						v-if="root.factors.length"
+						class="tex-line"
+					>
+						<TexMath :tex="`h_{${i + 1}}(x)=${root.factors.map((f) => `(${polyTex(f)})`).join('')}`" />
+					</p>
+					<p
+						v-else
+						class="note"
+					>
+						корней нет — неприводим над Z{{ sub(String(solved.p)) }}
+					</p>
+				</template>
+				<p class="tex-line answer">
+					<TexMath :tex="`h(x)=${shift.factorization.factors.map(({ poly, power }) => `(${polyTex(poly)})${power > 1 ? `^{${power}}` : ''}`).join('')}`" />
+				</p>
+			</StepCard>
+
+			<StepCard title="Производящая функция и перебор делителей h(x)">
+				<p class="tex-line">
+					<TexMath :tex="`S(x)=${seriesTex(solved.period, solved.period.length, 0)}`" />
+				</p>
+				<template
+					v-for="group in shift.groups"
+					:key="group.degree"
+				>
+					<p class="tex-line">
+						<span class="font-semibold">Делители {{ group.degree }}-й степени</span>
+					</p>
+					<p
+						v-for="(test, i) in group.tests"
+						:key="i"
+						class="tex-line"
+					>
+						<TexMath :tex="`\\bullet\\ ${divisorLabel(test)}`" />
+						<br>
+						<TexMath :tex="`(${polyTex(test.factor)})\\cdot S(x)=`" />
+						<template
+							v-for="(series, j) in shiftedSeries(test.factor)"
+							:key="j"
+						>
+							<TexMath :tex="`${j > 0 ? '+' : ''}${series}`" />
+						</template>
+						<TexMath :tex="`=${productTex(test)}`" />
+						<span :class="test.annihilating ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-stone-500'">
+							— {{ test.annihilating ? 'минимальный аннулирующий многочлен' : 'не аннулирующий' }}
+						</span>
+					</p>
+					<p
+						v-if="!group.tests.some((t) => t.annihilating)"
+						class="note"
+					>
+						делители {{ group.degree }}-й степени не аннулируют S(x) ⇒ смотрим делители {{ group.degree + 1 }}-й степени
+					</p>
+				</template>
+			</StepCard>
+
+			<StepCard title="Характеристический многочлен и соотношение">
+				<p class="tex-line">
+					<TexMath :tex="`h(x)=${polyTex(shift.hMin)}`" />
+					<TexMath :tex="`\\qquad h(0)=${shift.hMin[0]}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`g(x)=${solved.scale}\\cdot h(x)=${polyTex(solved.g)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`f(x)=${reciprocalTex(solved.g)}=${polyTex(solved.f)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`${polyTex(solved.f)}=0`" />
+					<TexMath :tex="`\\qquad ${relationTex(solved.coefs)}`" />
+					<TexMath tex="\qquad (x^{i}\to s_{n+i})" />
+				</p>
+				<p class="tex-line answer">
+					<TexMath :tex="recurrenceTex(solved.coefs)" />
+					<TexMath :tex="`\\qquad ${initialTex(solved.init)}`" />
+				</p>
+			</StepCard>
+
+			<StepCard title="Минимальный регистр сдвига">
+				<RegisterDiagram
+					:coefs="solved.coefs"
+					:init="solved.init"
+				/>
+				<p class="note">
+					проверка: соотношение с этим заполнением даёт {{ check.join(', ') }}, …
+				</p>
+			</StepCard>
+		</template>
+
+		<template v-else-if="solved">
 			<StepCard title="Аннулирующий многочлен по периоду">
 				<p class="tex-line">
 					<TexMath :tex="`Z_{${solved.p}}`" />

@@ -9,6 +9,7 @@ import {
 	polyEqual,
 	polyGcd,
 	polyMonic,
+	polyEval,
 	polyMul,
 	polyScale,
 	polyTex,
@@ -215,6 +216,124 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 		coefs: f.slice(0, k).map((v) => mod(-v, p)),
 		init: period.slice(0, k),
 	};
+}
+
+/** Множитель второй степени, разложенный подбором корней: h(0), h(1), … */
+export interface RootSearch
+{
+	poly: Poly;
+	values: { x: number; value: number }[];
+	factors: Poly[];
+}
+
+/** Делитель h(x) = xᵀ − 1 при переборе по степеням. */
+export interface DivisorTest extends SeriesProduct
+{
+
+	/** Запись произведением: (x+1)(x+2); для неприводимого — пусто. */
+	productLabel: string;
+}
+
+export interface DivisorGroup
+{
+	degree: number;
+	tests: DivisorTest[];
+}
+
+/** Подтип «минимальный регистр сдвига»: h(x) = xᵀ − 1 и перебор делителей по возрастанию степени. */
+export interface ShiftRegisterSolution
+{
+	base: MinimalRecurrence;
+
+	/** xᵀ − 1 по модулю p. */
+	h: Poly;
+
+	/** Неприводимые множители xᵀ − 1 со старшим коэффициентом 1. */
+	factorization: Factorization;
+	roots: RootSearch[];
+	groups: DivisorGroup[];
+
+	/** Минимальный аннулирующий со старшим коэффициентом 1. */
+	hMin: Poly;
+}
+
+export function shiftRegister (base: MinimalRecurrence): ShiftRegisterSolution
+{
+	const { p } = base;
+	const h = base.periodPoly;
+	const factorization = factorize(h, p);
+
+	const roots: RootSearch[] = [];
+
+	for (const { poly } of base.chain.composite)
+	{
+		const monic = polyMonic(poly, p);
+
+		if (degree(monic) !== 2) continue;
+
+		const values: { x: number; value: number }[] = [];
+		const found: number[] = [];
+
+		for (let x = 0; x < p && found.length < 2; x++)
+		{
+			const value = polyEval(monic, x, p);
+
+			values.push({ x, value });
+			if (value === 0) found.push(x);
+		}
+
+		if (found.length === 1) found.push(found[0]!);
+		roots.push({ poly: monic, values, factors: found.map((r) => [ mod(-r, p), 1 ]) });
+	}
+
+	/* Все делители h(x): произведения неприводимых множителей с кратностями. */
+	const list = factorization.factors;
+	const divisors: { poly: Poly; parts: Poly[] }[] = [];
+	const walk = (i: number, poly: Poly, parts: Poly[]): void =>
+	{
+		if (i === list.length)
+		{
+			if (parts.length > 0) divisors.push({ poly, parts });
+
+			return;
+		}
+
+		let acc = poly;
+		const taken = [ ...parts ];
+
+		walk(i + 1, acc, taken);
+		for (let e = 1; e <= list[i]!.power; e++)
+		{
+			acc = polyMul(acc, list[i]!.poly, p);
+			taken.push(list[i]!.poly);
+			walk(i + 1, acc, [ ...taken ]);
+		}
+	};
+
+	walk(0, [ 1 ], []);
+
+	const target = degree(base.candidate);
+	const groups: DivisorGroup[] = [];
+
+	for (let d = 1; d <= target; d++)
+	{
+		const tests: DivisorTest[] = [];
+
+		for (const { poly, parts } of divisors.filter((item) => degree(item.poly) === d))
+		{
+			const productLabel = parts.length > 1
+				? parts.map((part) => `(${polyTex(part)})`).join('')
+				: '';
+
+			tests.push({ ...seriesProduct(poly, base.period, p), productLabel });
+			if (tests[tests.length - 1]!.annihilating) break;
+		}
+
+		if (tests.length > 0) groups.push({ degree: d, tests });
+		if (tests.some((test) => test.annihilating)) break;
+	}
+
+	return { base, h, factorization, roots, groups, hMin: base.candidate };
 }
 
 /** Проверка: множители действительно дают исходный многочлен. */

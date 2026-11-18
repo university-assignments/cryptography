@@ -14,6 +14,7 @@ import {
 	generate,
 	minimalRecurrence,
 	seriesProduct,
+	shiftRegister,
 } from '../lrs';
 import {
 	analyzeRegister,
@@ -96,6 +97,38 @@ describe.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('часть 1, вар
 
 			expect(seriesProduct([ ...lower, 1 ], period, p).annihilating).toBe(false);
 		}
+	});
+});
+
+describe('часть 1, подтип «минимальный регистр сдвига» — пример из тетради', () =>
+{
+	it('Z7, (1,0,1,2,5,5): h = x²+2x+6, sₙ₊₂ = 2sₙ₊₁ + sₙ', () =>
+	{
+		const result = minimalRecurrence([ 1, 0, 1, 2, 5, 5 ], 7);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const shift = shiftRegister(result);
+
+		expect(polyTex(shift.hMin)).toBe('x^{2}+2x+6');
+		expect(polyTex(result.f)).toBe('x^{2}+5x+6');
+		expect(recurrenceTex(result.coefs)).toBe('s_{n+2}=2s_{n+1}+s_{n}');
+		expect(shift.groups.map((g) => g.degree)).toEqual([ 1, 2 ]);
+		expect(shift.groups[0]!.tests.every((t) => !t.annihilating)).toBe(true);
+	});
+
+	it.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('вариант %i: перебор по степеням даёт тот же ответ', (_, v) =>
+	{
+		const result = minimalRecurrence(parseList(v.minimal.period), v.minimal.p);
+
+		if (!result.ok) throw new Error(result.error);
+
+		const shift = shiftRegister(result);
+		const last = shift.groups[shift.groups.length - 1]!.tests.at(-1)!;
+
+		expect(last.annihilating).toBe(true);
+		expect(last.factor).toEqual(result.candidate);
 	});
 });
 
