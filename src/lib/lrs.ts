@@ -6,13 +6,10 @@ import {
 	degree,
 	factorize,
 	polyDivMod,
-	polyEqual,
 	polyGcd,
 	polyMonic,
-	polyEval,
 	polyMul,
 	polyScale,
-	polyTex,
 	trim,
 } from './poly';
 
@@ -97,20 +94,11 @@ export function seriesProduct (factor: Poly, period: number[], p: number): Serie
 	return { factor, head, tail, annihilating: tail.every((v) => v === 0) };
 }
 
-/** Проверка множителя; label — множитель в том виде, в каком он записан в разложении. */
-export interface LabeledProduct extends SeriesProduct
-{
-	label: string;
-}
-
 export interface MinimalRecurrence
 {
 	ok: true;
 	p: number;
 	period: number[];
-
-	/** xᵀ − 1: соотношение s(n+T) = s(n). */
-	periodPoly: Poly;
 
 	/** g(x) = 1 − xᵀ — он заведомо аннулирует: g(x)·S(x) — многочлен. */
 	g0: Poly;
@@ -122,16 +110,17 @@ export interface MinimalRecurrence
 	/** НОД(g(x), g(x)·S(x)). */
 	common: Poly;
 
+	/** Числитель и знаменатель S(x) после сокращения на НОД. */
+	reducedNumerator: Poly;
+	reducedDenominator: Poly;
+
 	/** Разложение g(x) цепочкой, как в тетради: (1 − x³)(1 + x³) = … */
 	chain: FactorChain;
 
-	/** Проверки множителей — как в тетради; последняя — аннулирующий. */
-	tests: LabeledProduct[];
-
-	/** Аннулирующий наименьшей степени — произведение неприводимых множителей g(x). */
+	/** Сокращённый знаменатель со старшим коэффициентом 1. */
 	candidate: Poly;
 
-	/** Неприводимые множители candidate (для подписи произведения). */
+	/** Разложение candidate, по возможности на неприводимые множители. */
 	candidateFactors: Factorization;
 
 	/** На что домножить candidate, чтобы g(0) = 1. */
@@ -162,36 +151,16 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 	if (period.every((v) => v === 0)) return { ok: false, error: 'Нулевая последовательность: соотношение не требуется.' };
 
 	const t = period.length;
-	const periodPoly = trim([ -1, ...Array.from({ length: t - 1 }, () => 0), 1 ], p);
 	const g0 = trim([ 1, ...Array.from({ length: t - 1 }, () => 0), -1 ], p);
 	const numerator = trim(period, p);
 	const common = polyGcd(g0, numerator, p);
-	const candidate = polyMonic(polyDivMod(g0, common, p).q, p);
+	const reducedNumerator = polyDivMod(numerator, common, p).q;
+	const reducedDenominator = polyDivMod(g0, common, p).q;
+	const candidate = polyMonic(reducedDenominator, p);
 	const factorization = factorize(g0, p);
 	const candidateFactors = factorize(candidate, p);
 
 	const chain = factorChain(t, p);
-	const tests: LabeledProduct[] = [];
-	const found = (): boolean => tests.some((test) => test.annihilating);
-
-	/* Сначала множители последнего звена, затем неразложенные множители предыдущего, затем сам минимальный. */
-	for (const { poly, tex } of chain.factors)
-	{
-		if (found()) break;
-
-		tests.push({ ...seriesProduct(poly, period, p), label: tex });
-	}
-
-	for (const { poly, tex } of chain.composite)
-	{
-		if (found()) break;
-		if (degree(poly) > degree(candidate) || tests.some((test) => polyEqual(test.factor, poly))) continue;
-
-		tests.push({ ...seriesProduct(poly, period, p), label: tex });
-	}
-
-	if (!found()) tests.push({ ...seriesProduct(candidate, period, p), label: polyTex(candidate) });
-
 	const scale = modInverse(candidate[0]!, p)!;
 	const g = polyScale(candidate, scale, p);
 	const f = [ ...g ].reverse();
@@ -201,13 +170,13 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 		ok: true,
 		p,
 		period,
-		periodPoly,
 		g0,
 		factorization,
 		chain,
 		numerator,
 		common,
-		tests,
+		reducedNumerator,
+		reducedDenominator,
 		candidate,
 		candidateFactors,
 		scale,
@@ -218,122 +187,37 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 	};
 }
 
-/** Множитель второй степени, разложенный подбором корней: h(0), h(1), … */
-export interface RootSearch
+interface LinearDivisorWitness
 {
-	poly: Poly;
-	values: { x: number; value: number }[];
-	factors: Poly[];
+	index: number;
+	current: number;
+	previous: number;
+	difference: number;
 }
 
-/** Делитель h(x) = xᵀ − 1 при переборе по степеням. */
-export interface DivisorTest extends SeriesProduct
+/** Соседние члены для проверки линейного делителя. Нулевой член позволяет исключить всю степень одним вычислением. */
+export function linearDivisorWitness (base: MinimalRecurrence): LinearDivisorWitness | null
 {
+	const { candidate, period, p } = base;
 
-	/** Запись произведением: (x+1)(x+2); для неприводимого — пусто. */
-	productLabel: string;
-}
+	if (degree(candidate) < 2) return null;
 
-export interface DivisorGroup
-{
-	degree: number;
-	tests: DivisorTest[];
-}
-
-/** Подтип «минимальный регистр сдвига»: h(x) = xᵀ − 1 и перебор делителей по возрастанию степени. */
-export interface ShiftRegisterSolution
-{
-	base: MinimalRecurrence;
-
-	/** xᵀ − 1 по модулю p. */
-	h: Poly;
-
-	/** Неприводимые множители xᵀ − 1 со старшим коэффициентом 1. */
-	factorization: Factorization;
-	roots: RootSearch[];
-	groups: DivisorGroup[];
-
-	/** Минимальный аннулирующий со старшим коэффициентом 1. */
-	hMin: Poly;
-}
-
-export function shiftRegister (base: MinimalRecurrence): ShiftRegisterSolution
-{
-	const { p } = base;
-	const h = base.periodPoly;
-	const factorization = factorize(h, p);
-
-	const roots: RootSearch[] = [];
-
-	for (const { poly } of base.chain.composite)
+	const zeroBoundary = period.findIndex((value, i) =>
 	{
-		const monic = polyMonic(poly, p);
+		const isZero = value === 0;
+		const nextIsZero = period[(i + 1) % period.length] === 0;
 
-		if (degree(monic) !== 2) continue;
+		return isZero !== nextIsZero;
+	});
 
-		const values: { x: number; value: number }[] = [];
-		const found: number[] = [];
+	/* Постоянный период имеет порядок 1, поэтому разность соседей обязательно найдётся. */
+	const index = zeroBoundary >= 0
+		? (zeroBoundary + 1) % period.length
+		: period.findIndex((value, i) => value !== period.at(i - 1));
+	const current = period[index]!;
+	const previous = period.at(index - 1)!;
 
-		for (let x = 0; x < p && found.length < 2; x++)
-		{
-			const value = polyEval(monic, x, p);
-
-			values.push({ x, value });
-			if (value === 0) found.push(x);
-		}
-
-		if (found.length === 1) found.push(found[0]!);
-		roots.push({ poly: monic, values, factors: found.map((r) => [ mod(-r, p), 1 ]) });
-	}
-
-	/* Все делители h(x): произведения неприводимых множителей с кратностями. */
-	const list = factorization.factors;
-	const divisors: { poly: Poly; parts: Poly[] }[] = [];
-	const walk = (i: number, poly: Poly, parts: Poly[]): void =>
-	{
-		if (i === list.length)
-		{
-			if (parts.length > 0) divisors.push({ poly, parts });
-
-			return;
-		}
-
-		let acc = poly;
-		const taken = [ ...parts ];
-
-		walk(i + 1, acc, taken);
-		for (let e = 1; e <= list[i]!.power; e++)
-		{
-			acc = polyMul(acc, list[i]!.poly, p);
-			taken.push(list[i]!.poly);
-			walk(i + 1, acc, [ ...taken ]);
-		}
-	};
-
-	walk(0, [ 1 ], []);
-
-	const target = degree(base.candidate);
-	const groups: DivisorGroup[] = [];
-
-	for (let d = 1; d <= target; d++)
-	{
-		const tests: DivisorTest[] = [];
-
-		for (const { poly, parts } of divisors.filter((item) => degree(item.poly) === d))
-		{
-			const productLabel = parts.length > 1
-				? parts.map((part) => `(${polyTex(part)})`).join('')
-				: '';
-
-			tests.push({ ...seriesProduct(poly, base.period, p), productLabel });
-			if (tests[tests.length - 1]!.annihilating) break;
-		}
-
-		if (tests.length > 0) groups.push({ degree: d, tests });
-		if (tests.some((test) => test.annihilating)) break;
-	}
-
-	return { base, h, factorization, roots, groups, hMin: base.candidate };
+	return { index, current, previous, difference: mod(current - previous, p) };
 }
 
 /** Проверка: множители действительно дают исходный многочлен. */

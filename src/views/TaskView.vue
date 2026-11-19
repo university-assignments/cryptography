@@ -10,6 +10,7 @@ import PlayfairTask from '@/components/tasks/PlayfairTask.vue';
 import SquareTask from '@/components/tasks/SquareTask.vue';
 import VigenereTask from '@/components/tasks/VigenereTask.vue';
 import { findVariant } from '@/data/work-1/variants';
+import { ISSUED_TASK_NUMBERS, issuedSheetOf } from '@/data/work-2/photos';
 import { findVariant2 } from '@/data/work-2/variants';
 import {
 	type TaskSlug,
@@ -34,6 +35,12 @@ const preset = computed(() =>
 		: findVariant(Number(props.variant));
 });
 const valid = computed(() => Boolean(work.value && task.value && (isCustom.value || preset.value)));
+const issuedNumber = computed(() =>
+{
+	if (work.value?.id !== 2 || !task.value || !issuedSheetOf(Number(props.variant))) return undefined;
+
+	return ISSUED_TASK_NUMBERS[task.value.id];
+});
 
 const components: Record<TaskSlug, Component> = {
 	hill: HillTask,
@@ -64,6 +71,12 @@ const siblings = computed(() =>
 		<div>
 			<p class="text-xs font-medium uppercase tracking-wide text-stone-500">
 				{{ isCustom ? 'Свои данные' : `Вариант ${variant}` }} · {{ taskLabel(task) }}
+				<template v-if="issuedNumber">
+					· <RouterLink
+						:to="`/work/2/variant/${variant}`"
+						class="underline underline-offset-2"
+					>№ {{ issuedNumber }} на выданном листе</RouterLink>
+				</template>
 			</p>
 			<h1 class="text-2xl font-semibold tracking-tight">
 				{{ task.title }}

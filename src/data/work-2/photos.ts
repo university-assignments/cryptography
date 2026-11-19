@@ -9,6 +9,53 @@ export interface PartPhotos
 const BASE = `${import.meta.env.BASE_URL}photos/work-2`;
 const PAGE = { width: 960, height: 1280 };
 
+interface IssuedSheet
+{
+	photo: Photo;
+	detail?: string;
+}
+
+const ISSUED_SHEETS: Partial<Record<number, { width: number; height: number; detail?: string }>> = {
+	1: {
+		width: 1280,
+		height: 893,
+		detail: 'В задании 2 выданного листа напечатано g(x) = x⁴ + x + 1. В архивном условии пропущен знак «+» между x⁴ и x. На сайте используется формула с выданного листа.',
+	},
+	2: { width: 630, height: 480 },
+	3: {
+		width: 1200,
+		height: 635,
+		detail: 'Начало задания 1 частично закрыто. Полное условие шифра доступно на архивном фото в части 2.',
+	},
+	5: { width: 960, height: 595 },
+	6: {
+		width: 1440,
+		height: 970,
+		detail: 'В задании 2 выданного листа β = α³ + α + 1, как в решении на сайте. В архивном условии и тетради указан элемент α³ + α² + 1.',
+	},
+};
+
+/** Номера заданий на выданном листе по идентификаторам маршрутов. */
+export const ISSUED_TASK_NUMBERS: Partial<Record<number, number>> = { 1: 3, 2: 1, 3: 2 };
+
+export function issuedSheetOf (variant: number): IssuedSheet | undefined
+{
+	const sheet = ISSUED_SHEETS[variant];
+
+	if (!sheet) return undefined;
+
+	return {
+		photo: {
+			src: `${BASE}/v${variant}/issued-sheet.webp`,
+			thumb: `${BASE}/v${variant}/issued-sheet.thumb.webp`,
+			width: sheet.width,
+			height: sheet.height,
+			caption: `Вариант ${variant} · лист трёх заданий`,
+		},
+		detail: sheet.detail,
+	};
+}
+
 /** Маршруты заданий: часть 1 — задание 1; часть 2 — задания 2 и 3. */
 const task = (variant: number, id: number): string => `/work/2/variant/${variant}/task/${id}`;
 

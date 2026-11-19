@@ -5,7 +5,7 @@ import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import 'photoswipe/style.css';
 import type { Photo } from '@/data/work-1/photos';
 
-const props = defineProps<{ photos: Photo[]; galleryId: string }>();
+const props = defineProps<{ photos: Photo[]; galleryId: string; wide?: boolean }>();
 const router = useRouter();
 
 const root = useTemplateRef<HTMLElement>('root');
@@ -93,7 +93,8 @@ onBeforeUnmount(() =>
 	<div
 		:id="galleryId"
 		ref="root"
-		class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6"
+		class="grid gap-2"
+		:class="wide ? 'max-w-sm grid-cols-1' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6'"
 	>
 		<a
 			v-for="photo in photos"
@@ -108,9 +109,10 @@ onBeforeUnmount(() =>
 		>
 			<img
 				:src="photo.thumb"
-				:alt="photo.caption"
+				alt=""
 				loading="lazy"
-				class="aspect-3/4 w-full object-cover transition group-hover:scale-[1.03]"
+				class="w-full transition group-hover:scale-[1.03]"
+				:class="wide ? 'aspect-3/2 object-contain' : 'aspect-3/4 object-cover'"
 			>
 			<span
 				v-if="photo.note"

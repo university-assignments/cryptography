@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
 import RegisterDiagram from '@/components/RegisterDiagram.vue';
 import ResetButton from '@/components/ResetButton.vue';
@@ -9,15 +10,12 @@ import TexMath from '@/components/TexMath.vue';
 import { useQueryParam } from '@/composables/useQueryParam';
 import { type Variant2Preset, parseList } from '@/data/work-2/variants';
 import { sub } from '@/lib/format';
-import FieldSelect from '@/components/FieldSelect.vue';
 import {
-	type DivisorTest,
-	type SeriesProduct,
 	generate,
+	linearDivisorWitness,
 	minimalRecurrence,
-	shiftRegister,
+	seriesProduct,
 } from '@/lib/lrs';
-import { monicChainStages } from '@/lib/lrs-chain';
 import {
 	ascendingTex,
 	initialTex,
@@ -26,13 +24,7 @@ import {
 	relationTex,
 	seriesTex,
 } from '@/lib/lrs-format';
-import {
-	type Factorization,
-	type Poly,
-	degree,
-	polyEqual,
-	polyTex,
-} from '@/lib/poly';
+import { type Factorization, degree, polyTex } from '@/lib/poly';
 
 const props = defineProps<{ preset?: Variant2Preset }>();
 
@@ -45,6 +37,12 @@ const SUBTYPES = [
 
 const subtype = useQueryParam('type', () => 'shift');
 const isShift = computed(() => subtype.value !== 'feedback');
+const registerTitle = computed(() =>
+{
+	return isShift.value
+		? SUBTYPES[0]!.label
+		: SUBTYPES[1]!.label;
+});
 
 const modulus = useQueryParam('p', () => String(props.preset?.minimal.p ?? ''));
 const seq = useQueryParam('seq', () => props.preset?.minimal.period ?? '');
@@ -66,30 +64,52 @@ const solved = computed(() =>
 	return null;
 });
 
-const shift = computed(() =>
+const linearCheck = computed(() =>
 {
-	if (!solved.value) return null;
+	const base = solved.value;
 
-	return shiftRegister(solved.value);
+	if (!base) return null;
+
+	const witness = linearDivisorWitness(base);
+
+	if (!witness) return null;
+
+	const { index, current, previous, difference } = witness;
+	const exponent = index === 0
+		? `${base.period.length}m`
+		: `${base.period.length}m+${index}`;
+	const coefficient = `[x^{${exponent}}]`;
+	const start = `m\\ge ${Number(index === 0)}`;
+
+	if (previous === 0)
+	{
+		return {
+			form: '1+ax',
+			normalization: 'свободный член',
+			start,
+			tex: `${coefficient}(1+ax)S(x)=${current}+a\\cdot 0=${current}\\ne 0`,
+		};
+	}
+
+	if (current === 0)
+	{
+		return {
+			form: 'x+a',
+			normalization: 'старший коэффициент',
+			start,
+			tex: `${coefficient}(x+a)S(x)=${previous}+a\\cdot 0=${previous}\\ne 0`,
+		};
+	}
+
+	return {
+		form: '1-x',
+		normalization: null,
+		start,
+		tex: `${coefficient}(1-x)S(x)=${current}-${previous}\\equiv ${difference}\\not\\equiv 0\\pmod{${base.p}}`,
+	};
 });
 
-const chainStages = computed(() =>
-{
-	if (!solved.value) return [];
-
-	return monicChainStages(solved.value.period.length, solved.value.p);
-});
-
-/** Делитель в TeX: произведение множителей и раскрытый многочлен. */
-function divisorLabel (test: DivisorTest): string
-{
-	return test.productLabel
-		? `${test.productLabel}=${polyTex(test.factor)}`
-		: polyTex(test.factor);
-}
-
-/** (x+1)(x+2)^{2} — произведение неприводимых множителей. */
-function factorsTex (factorization: Factorization): string
+function factorizationTex (factorization: Factorization): string
 {
 	const unit = factorization.unit === 1
 		? ''
@@ -100,70 +120,25 @@ function factorsTex (factorization: Factorization): string
 		: ''}`).join('');
 }
 
-/** Слагаемые q(x)·S(x): каждый коэффициент q даёт свой сдвинутый ряд — как расписано в тетради. */
-function shiftedSeries (factor: Poly): string[]
+const minimumTex = computed(() =>
 {
-	const t = period.value.length;
+	const base = solved.value;
 
-	const series: string[] = [];
+	if (!base) return '';
 
-	factor.forEach((coef, shift) =>
-	{
-		if (coef !== 0) series.push(seriesTex(period.value.map((v) => v * coef % p.value), t, shift));
-	});
+	const { complete, factors } = base.candidateFactors;
+	const polynomial = polyTex(base.candidate);
 
-	return series;
-}
+	if (!complete || factors.length === 1 && factors[0]!.power === 1) return polynomial;
 
-/** Итог произведения: многочлен в начале и периодический хвост. */
-function productTex (test: SeriesProduct): string
-{
-	const head = ascendingTex(test.head);
-
-	if (test.annihilating) return head;
-
-	const tail = seriesTex(test.tail, period.value.length, degree(test.factor));
-
-	return test.head.some((v) => v !== 0)
-		? `${head}+${tail}`
-		: tail;
-}
-
-/** x²·(5/x² + 6/x + 1) — переход от g(x) к характеристическому f(x). */
-function reciprocalTex (g: Poly): string
-{
-	const k = degree(g);
-	const terms = g.map((coef, i) =>
-	{
-		if (coef === 0) return '';
-		if (i === 0) return String(coef);
-
-		return `\\frac{${coef}}{${i === 1
-			? 'x'
-			: `x^{${i}}`}}`;
-	}).filter(Boolean).
-		reverse();
-
-	return `${k === 1
-		? 'x'
-		: `x^{${k}}`}\\cdot\\left(${terms.join('+')}\\right)`;
-}
+	return `${factorizationTex(base.candidateFactors)}=${polynomial}`;
+});
 
 const check = computed(() =>
 {
 	if (!solved.value) return [];
 
 	return generate(solved.value.coefs, solved.value.init, solved.value.p, period.value.length * 2);
-});
-
-/** Минимальный многочлен уже есть среди множителей разложения — отдельно пояснять его не нужно. */
-const candidateIsFactor = computed(() =>
-{
-	if (!solved.value) return true;
-
-	const { chain, candidate } = solved.value;
-
-	return [ ...chain.factors, ...chain.composite ].some((item) => polyEqual(item.poly, candidate));
 });
 </script>
 
@@ -211,262 +186,121 @@ const candidateIsFactor = computed(() =>
 			{{ result.error }}
 		</p>
 
-		<template v-if="solved && shift && isShift">
-			<StepCard title="Аннулирующий многочлен по периоду">
+		<template v-if="solved">
+			<StepCard title="Период и производящая функция">
 				<p class="tex-line">
-					<TexMath :tex="`Z_{${solved.p}}`" />
-					<TexMath :tex="`\\qquad S=${periodicTex(solved.period)}`" />
+					<TexMath :tex="`\\mathbb{Z}_{${solved.p}},\\quad T=${solved.period.length},\\quad S=${periodicTex(solved.period)}`" />
 				</p>
-				<p class="tex-line">
-					<TexMath :tex="`s_{n+${solved.period.length}}=s_{n}`" />
-					<TexMath tex="\qquad s_{i}\to x^{i}" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`x^{n+${solved.period.length}}=x^{n}`" />
-					<TexMath :tex="`\\qquad x^{${solved.period.length}}=1`" />
-					<TexMath :tex="`\\qquad x^{${solved.period.length}}-1=0`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`\\tilde f(x)=x^{${solved.period.length}}-1`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`\\tilde g(x)=x^{${solved.period.length}}\\cdot\\tilde f\\left(\\tfrac{1}{x}\\right)=x^{${solved.period.length}}\\cdot\\left(\\tfrac{1}{x^{${solved.period.length}}}-1\\right)=1-x^{${solved.period.length}}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`h(x)=(1-x^{${solved.period.length}})\\cdot(-1)=x^{${solved.period.length}}-1`" />
-					<TexMath
-						v-for="(stage, i) in chainStages"
-						:key="i"
-						:tex="`=${stage}`"
-					/>
-				</p>
-				<template
-					v-for="(root, i) in shift.roots"
-					:key="i"
-				>
-					<p class="tex-line">
-						<TexMath :tex="`h_{${i + 1}}(x)=${polyTex(root.poly)}`" />
-					</p>
-					<p class="tex-line">
-						<TexMath
-							v-for="item in root.values"
-							:key="item.x"
-							:tex="`h_{${i + 1}}(${item.x})=${item.value}\\qquad`"
-						/>
-					</p>
-					<p
-						v-if="root.factors.length"
-						class="tex-line"
-					>
-						<TexMath :tex="`h_{${i + 1}}(x)=${root.factors.map((f) => `(${polyTex(f)})`).join('')}`" />
-					</p>
-					<p
-						v-else
-						class="note"
-					>
-						корней нет — неприводим над Z{{ sub(String(solved.p)) }}
-					</p>
-				</template>
-				<p class="tex-line answer">
-					<TexMath :tex="`h(x)=${shift.factorization.factors.map(({ poly, power }) => `(${polyTex(poly)})${power > 1 ? `^{${power}}` : ''}`).join('')}`" />
-				</p>
-			</StepCard>
-
-			<StepCard title="Производящая функция и перебор делителей h(x)">
 				<p class="tex-line">
 					<TexMath :tex="`S(x)=${seriesTex(solved.period, solved.period.length, 0)}`" />
 				</p>
-				<template
-					v-for="group in shift.groups"
-					:key="group.degree"
-				>
-					<p class="tex-line">
-						<span class="font-semibold">Делители {{ group.degree }}-й степени</span>
-					</p>
-					<p
-						v-for="(test, i) in group.tests"
-						:key="i"
-						class="tex-line"
-					>
-						<TexMath :tex="`\\bullet\\ ${divisorLabel(test)}`" />
-						<br>
-						<TexMath :tex="`(${polyTex(test.factor)})\\cdot S(x)=`" />
-						<template
-							v-for="(series, j) in shiftedSeries(test.factor)"
-							:key="j"
-						>
-							<TexMath :tex="`${j > 0 ? '+' : ''}${series}`" />
-						</template>
-						<TexMath :tex="`=${productTex(test)}`" />
-						<span :class="test.annihilating ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-stone-500'">
-							— {{ test.annihilating ? 'минимальный аннулирующий многочлен' : 'не аннулирующий' }}
-						</span>
-					</p>
-					<p
-						v-if="!group.tests.some((t) => t.annihilating)"
-						class="note"
-					>
-						делители {{ group.degree }}-й степени не аннулируют S(x) ⇒ смотрим делители {{ group.degree + 1 }}-й степени
-					</p>
-				</template>
-			</StepCard>
-
-			<StepCard title="Характеристический многочлен и соотношение">
 				<p class="tex-line">
-					<TexMath :tex="`h(x)=${polyTex(shift.hMin)}`" />
-					<TexMath :tex="`\\qquad h(0)=${shift.hMin[0]}`" />
+					<TexMath :tex="`P(x)=${ascendingTex(solved.numerator)}`" />
+					<TexMath :tex="`D(x)=1-x^{${solved.period.length}}`" />
 				</p>
 				<p class="tex-line">
-					<TexMath :tex="`g(x)=${solved.scale}\\cdot h(x)=${polyTex(solved.g)}`" />
+					<TexMath :tex="`S(x)=P(x)(1+x^{${solved.period.length}}+x^{${2 * solved.period.length}}+\\dots)=\\frac{P(x)}{D(x)}`" />
 				</p>
-				<p class="tex-line">
-					<TexMath :tex="`f(x)=${reciprocalTex(solved.g)}=${polyTex(solved.f)}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`${polyTex(solved.f)}=0`" />
-					<TexMath :tex="`\\qquad ${relationTex(solved.coefs)}`" />
-					<TexMath tex="\qquad (x^{i}\to s_{n+i})" />
-				</p>
-				<p class="tex-line answer">
-					<TexMath :tex="recurrenceTex(solved.coefs)" />
-					<TexMath :tex="`\\qquad ${initialTex(solved.init)}`" />
+				<p class="text-sm">
+					Умножение на <TexMath tex="D(x)" /> оставляет только многочлен <TexMath tex="P(x)" />. Поэтому <TexMath tex="D(x)" /> аннулирует последовательность.
 				</p>
 			</StepCard>
 
-			<StepCard title="Минимальный регистр сдвига">
-				<RegisterDiagram
-					:coefs="solved.coefs"
-					:init="solved.init"
-				/>
-				<p class="note">
-					проверка: соотношение с этим заполнением даёт {{ check.join(', ') }}, …
-				</p>
-			</StepCard>
-		</template>
-
-		<template v-else-if="solved">
-			<StepCard title="Аннулирующий многочлен по периоду">
-				<p class="tex-line">
-					<TexMath :tex="`Z_{${solved.p}}`" />
-					<TexMath :tex="`\\qquad S=${periodicTex(solved.period)}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`s_{n+${solved.period.length}}=s_{n}`" />
-					<TexMath tex="\qquad s_{i}\to x^{i}" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`x^{n+${solved.period.length}}=x^{n}\\ \\big|:x^{n}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`x^{${solved.period.length}}=1`" />
-					<TexMath :tex="`\\qquad ${polyTex(solved.periodPoly)}=0`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`f(x)=${polyTex(solved.periodPoly)}`" />
-					<TexMath :tex="`\\qquad g(x)=${polyTex(solved.g0)}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`${polyTex(solved.g0)}=1-x^{${solved.period.length}}`" />
-					<TexMath
-						v-for="(stage, i) in solved.chain.stages"
-						:key="i"
-						:tex="`=${stage}`"
-					/>
-				</p>
+			<StepCard
+				v-if="linearCheck"
+				title="Проверка по коэффициенту ряда"
+			>
 				<p
-					v-if="!solved.factorization.complete"
-					class="note"
+					v-if="linearCheck.normalization"
+					class="text-sm"
 				>
-					разложение оборвано: степени слишком большие для перебора, последний множитель может раскладываться дальше
+					У линейного делителя <TexMath tex="D(x)" /> {{ linearCheck.normalization }} отличен от нуля, поэтому его можно привести к виду <TexMath :tex="linearCheck.form" />.
 				</p>
-			</StepCard>
-
-			<StepCard title="Производящая функция">
-				<p class="tex-line">
-					<TexMath :tex="`S(x)=${seriesTex(solved.period, solved.period.length, 0)}`" />
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`(${polyTex(solved.g0)})\\cdot S(x)=`" />
-					<template
-						v-for="(series, i) in shiftedSeries(solved.g0)"
-						:key="i"
-					>
-						<TexMath :tex="`${i > 0 ? '+' : ''}${series}`" />
-					</template>
-					<TexMath :tex="`=${ascendingTex(solved.numerator)}`" />
-				</p>
-				<p class="note">
-					произведение — многочлен, значит g(x) аннулирует последовательность; минимальный аннулирующий — делитель g(x)
-				</p>
-			</StepCard>
-
-			<StepCard title="Перебор множителей g(x)">
-				<template
-					v-for="(test, i) in solved.tests"
-					:key="i"
-				>
-					<template v-if="test.annihilating && !candidateIsFactor">
-						<p class="note">
-							ни один из множителей не аннулирует; наименьшую степень даёт произведение неприводимых — g(x), делённый на НОД(g(x), g(x)·S(x))
-						</p>
-						<p class="tex-line">
-							<TexMath :tex="`${factorsTex(solved.candidateFactors)}=${polyTex(solved.candidate)}`" />
-						</p>
-					</template>
-					<p class="tex-line">
-						<TexMath :tex="`\\bullet\\ (${test.label})\\cdot S(x)=`" />
-						<template
-							v-for="(series, j) in shiftedSeries(test.factor)"
-							:key="j"
-						>
-							<TexMath :tex="`${j > 0 ? '+' : ''}${series}`" />
-						</template>
-						<TexMath :tex="`=${productTex(test)}`" />
-						<span :class="test.annihilating ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-stone-500'">
-							— {{ test.annihilating ? 'аннулирующий' : 'не аннулирующий' }}
-						</span>
-					</p>
-				</template>
-			</StepCard>
-
-			<StepCard title="Характеристический многочлен и соотношение">
-				<template v-if="solved.scale !== 1">
-					<p class="tex-line">
-						<TexMath :tex="`g(x)=${polyTex(solved.candidate)}\\ \\big|\\cdot ${solved.scale}`" />
-						<TexMath :tex="`\\qquad g(0)=${solved.candidate[0]}`" />
-					</p>
-					<p class="tex-line">
-						<TexMath :tex="`g(x)=${polyTex(solved.g)}`" />
-						<TexMath tex="\qquad g(0)=1" />
-					</p>
-				</template>
 				<p
 					v-else
-					class="tex-line"
+					class="text-sm"
 				>
-					<TexMath :tex="`g(x)=${polyTex(solved.g)}`" />
-					<TexMath tex="\qquad g(0)=1" />
+					Возьмём линейный делитель <TexMath tex="1-x" />. В произведении с <TexMath tex="S(x)" /> рассмотрим разность соседних членов периода.
 				</p>
 				<p class="tex-line">
-					<TexMath :tex="`f(x)=${reciprocalTex(solved.g)}=${polyTex(solved.f)}`" />
+					<TexMath :tex="linearCheck.tex" />
+					<TexMath :tex="linearCheck.start" />
 				</p>
-				<p class="tex-line">
-					<TexMath :tex="`${polyTex(solved.f)}=0`" />
-					<TexMath :tex="`\\qquad ${relationTex(solved.coefs)}`" />
-				</p>
-				<p class="tex-line answer">
-					<TexMath :tex="recurrenceTex(solved.coefs)" />
-					<TexMath :tex="`\\qquad ${initialTex(solved.init)}`" />
+				<p class="text-sm">
+					<template v-if="linearCheck.normalization">
+						Коэффициент отличен от нуля при любом <TexMath tex="a" /> и повторяется бесконечно. Поэтому все линейные делители исключаются.
+					</template>
+					<template v-else>
+						Коэффициент повторяется бесконечно, поэтому произведение с <TexMath tex="1-x" /> не является многочленом. Для остальных делителей используем общий критерий.
+					</template>
 				</p>
 			</StepCard>
 
-			<StepCard title="Линейный регистр с обратной связью">
+			<StepCard title="Какие делители могут аннулировать последовательность">
+				<p class="text-sm">
+					Сократим дробь на наибольший общий делитель числителя и знаменателя.
+				</p>
+				<p
+					v-if="solved.factorization.complete && (solved.factorization.factors.length > 1 || solved.factorization.factors[0]!.power > 1)"
+					class="tex-line"
+				>
+					<TexMath
+						v-for="(stage, i) in solved.chain.stages.slice(0, -1)"
+						:key="i"
+						:tex="`${i === 0 ? 'D(x)=' : '='}${stage}`"
+					/>
+					<TexMath :tex="`${solved.chain.stages.length > 1 ? '=' : 'D(x)='}${factorizationTex(solved.factorization)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`C(x)=\\text{НОД}(D(x),P(x))=${polyTex(solved.common)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`P_{*}(x)=P(x)/C(x)=${ascendingTex(solved.reducedNumerator)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`D_{*}(x)=D(x)/C(x)=${polyTex(solved.reducedDenominator)}`" />
+				</p>
+				<p class="text-sm">
+					Многочлены <TexMath tex="P_{*}" /> и <TexMath tex="D_{*}" /> взаимно просты. Произведение <TexMath tex="qS=qP_{*}/D_{*}" /> является многочленом тогда и только тогда, когда <TexMath tex="D_{*}" /> делит <TexMath tex="q" />.
+				</p>
+				<p class="tex-line answer">
+					<TexMath :tex="`h_{\\min}(x)=${minimumTex},\\quad \\deg h_{\\min}=${degree(solved.candidate)}`" />
+				</p>
+				<p class="text-sm">
+					<TexMath tex="h_{\min}" /> получен из <TexMath tex="D_{*}" /> приведением старшего коэффициента к 1.
+					Все аннулирующие многочлены должны содержать его множители со всеми указанными кратностями. Поэтому исключаем все ненулевые многочлены степени меньше {{ degree(solved.candidate) }} и все делители степени {{ degree(solved.candidate) }} с недостаточной кратностью хотя бы одного из этих множителей.
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`h_{\\min}(x)S(x)=${ascendingTex(seriesProduct(solved.candidate, solved.period, solved.p).head)}`" />
+				</p>
+				<p class="text-sm">
+					Получился многочлен. Для аннулирующего <TexMath tex="q" /> с <TexMath tex="q(0)\ne 0" /> имеем <TexMath tex="\deg(qS)<\deg q" />, поскольку <TexMath tex="\deg P_{*}<\deg D_{*}" />. Приравнивая к нулю коэффициенты при <TexMath tex="x^{n+\deg q}" /> в <TexMath tex="qS" />, получаем соотношение порядка <TexMath tex="\deg q" />. И наоборот, соотношение порядка <TexMath tex="k" /> даёт аннулирующий многочлен степени не выше <TexMath tex="k" />.
+				</p>
+			</StepCard>
+
+			<StepCard title="Характеристический многочлен и соотношение">
+				<p class="tex-line">
+					<TexMath :tex="`g(x)=${solved.scale}\\cdot h_{\\min}(x)=${polyTex(solved.g)},\\quad g(0)=1`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`f(x)=x^{${degree(solved.g)}}g\\left(\\frac{1}{x}\\right)=${polyTex(solved.f)}`" />
+				</p>
+				<p class="tex-line">
+					<TexMath :tex="`${relationTex(solved.coefs)}\\qquad (x^i\\to s_{n+i})`" />
+				</p>
+				<p class="tex-line answer">
+					<TexMath :tex="recurrenceTex(solved.coefs)" />
+					<TexMath :tex="initialTex(solved.init)" />
+				</p>
+			</StepCard>
+
+			<StepCard :title="registerTitle">
 				<RegisterDiagram
 					:coefs="solved.coefs"
 					:init="solved.init"
 				/>
 				<p class="note">
-					проверка: соотношение с этим заполнением даёт {{ check.join(', ') }}, …
+					Проверка регистра даёт {{ check.join(', ') }}, …
 				</p>
 			</StepCard>
 		</template>

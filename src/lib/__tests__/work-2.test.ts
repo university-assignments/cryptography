@@ -12,9 +12,9 @@ import {
 import {
 	expand,
 	generate,
+	linearDivisorWitness,
 	minimalRecurrence,
 	seriesProduct,
-	shiftRegister,
 } from '../lrs';
 import {
 	analyzeRegister,
@@ -25,7 +25,7 @@ import {
 } from '../lrs-cipher';
 import { chainProduct } from '../lrs-chain';
 import { recurrenceTex } from '../lrs-format';
-import { polyTex } from '../poly';
+import { polyGcd, polyMul, polyTex } from '../poly';
 
 describe('доступ к работе', () =>
 {
@@ -76,12 +76,17 @@ describe.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('часть 1, вар
 		expect(generate(result.coefs, result.init, v.minimal.p, 18)).toEqual([ ...period, ...period, ...period ]);
 	});
 
-	it('разложение g(x) сходится, аннулирует только последний из проверенных', () =>
+	it('сокращение даёт взаимно простые числитель и знаменатель, минимальный делитель аннулирует ряд', () =>
 	{
 		if (!result.ok) return;
 
-		expect(expand(result.factorization, v.minimal.p)).toEqual(result.g0);
-		expect(result.tests.map((test) => test.annihilating)).toEqual([ ...result.tests.slice(1).map(() => false), true ]);
+		const { p, common, reducedNumerator, reducedDenominator } = result;
+
+		expect(expand(result.factorization, p)).toEqual(result.g0);
+		expect(polyMul(reducedNumerator, common, p)).toEqual(result.numerator);
+		expect(polyMul(reducedDenominator, common, p)).toEqual(result.g0);
+		expect(polyGcd(reducedNumerator, reducedDenominator, p)).toEqual([ 1 ]);
+		expect(seriesProduct(result.candidate, period, p).annihilating).toBe(true);
 	});
 
 	it('многочлена меньшей степени, аннулирующего последовательность, нет', () =>
@@ -100,35 +105,47 @@ describe.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('часть 1, вар
 	});
 });
 
-describe('часть 1, подтип «минимальный регистр сдвига» — пример из тетради', () =>
+describe('часть 1: проверка линейного делителя и кратности в сокращённом знаменателе', () =>
 {
-	it('Z7, (1,0,1,2,5,5): h = x²+2x+6, sₙ₊₂ = 2sₙ₊₁ + sₙ', () =>
+	it('первый вариант и пример из практики дают разные соотношения и ненулевые коэффициенты при любом a', () =>
 	{
-		const result = minimalRecurrence([ 1, 0, 1, 2, 5, 5 ], 7);
+		const first = minimalRecurrence([ 0, 2, 2, 6, 3, 1 ], 7);
+		const practice = minimalRecurrence([ 1, 0, 1, 2, 5, 5 ], 7);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
+		if (!first.ok || !practice.ok) throw new Error('Ожидались два корректных периода');
 
-		const shift = shiftRegister(result);
-
-		expect(polyTex(shift.hMin)).toBe('x^{2}+2x+6');
-		expect(polyTex(result.f)).toBe('x^{2}+5x+6');
-		expect(recurrenceTex(result.coefs)).toBe('s_{n+2}=2s_{n+1}+s_{n}');
-		expect(shift.groups.map((g) => g.degree)).toEqual([ 1, 2 ]);
-		expect(shift.groups[0]!.tests.every((t) => !t.annihilating)).toBe(true);
+		expect(linearDivisorWitness(first)).toEqual({ index: 1, current: 2, previous: 0, difference: 2 });
+		expect(linearDivisorWitness(practice)).toEqual({ index: 1, current: 0, previous: 1, difference: 6 });
+		expect(polyTex(practice.candidate)).toBe('x^{2}+2x+6');
+		expect(polyTex(practice.f)).toBe('x^{2}+5x+6');
+		expect(recurrenceTex(practice.coefs)).toBe('s_{n+2}=2s_{n+1}+s_{n}');
 	});
 
-	it.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('вариант %i: перебор по степеням даёт тот же ответ', (_, v) =>
+	it('для периода без нулей проверяет 1−x, а при порядке 1 лишняя проверка не нужна', () =>
 	{
-		const result = minimalRecurrence(parseList(v.minimal.period), v.minimal.p);
+		const second = minimalRecurrence([ 2, 9, 7, 9, 2, 4 ], 11);
+		const fourth = minimalRecurrence([ 3, 1, 5, 4, 6, 2 ], 7);
+
+		if (!second.ok || !fourth.ok) throw new Error('Ожидались два корректных периода');
+
+		expect(linearDivisorWitness(second)).toEqual({ index: 0, current: 2, previous: 4, difference: 9 });
+		expect(seriesProduct([ 1, 10 ], second.period, second.p).tail.at(-1)).toBe(9);
+		expect(linearDivisorWitness(fourth)).toBeNull();
+	});
+
+	it.each([
+		{ period: [ 0, 1, 1, 0, 2, 2 ], p: 3, power: 2, insufficient: [ 1, 1 ] },
+		{ period: [ 1, 0, 0, 0 ], p: 2, power: 4, insufficient: [ 1, 1, 1, 1 ] },
+	])('над Z$p множитель x+1 нужен в степени $power', ({ period, p, power, insufficient }) =>
+	{
+		const result = minimalRecurrence(period, p);
 
 		if (!result.ok) throw new Error(result.error);
 
-		const shift = shiftRegister(result);
-		const last = shift.groups[shift.groups.length - 1]!.tests.at(-1)!;
-
-		expect(last.annihilating).toBe(true);
-		expect(last.factor).toEqual(result.candidate);
+		expect(result.candidateFactors.factors).toEqual([{ poly: [ 1, 1 ], power }]);
+		expect(seriesProduct(result.candidate, period, p).annihilating).toBe(true);
+		expect(seriesProduct(insufficient, period, p).annihilating).toBe(false);
+		expect(generate(result.coefs, result.init, p, period.length * 2)).toEqual([ ...period, ...period ]);
 	});
 });
 
@@ -275,16 +292,5 @@ describe('разложение g(x) цепочкой', () =>
 
 		expect(result.ok && result.chain.stages).toEqual([ ...INTEGER, LAST[id] ]);
 		expect(result.ok && chainProduct(result.chain, v.minimal.p)).toEqual(result.ok && result.g0);
-	});
-
-	it('перебор идёт по множителям в порядке записи', () =>
-	{
-		const first = minimalRecurrence([ 0, 2, 2, 6, 3, 1 ], 7);
-		const fourth = minimalRecurrence([ 3, 1, 5, 4, 6, 2 ], 7);
-		const sixth = minimalRecurrence([ 0, 1, 1, 0, 2, 2 ], 3);
-
-		expect(first.ok && first.tests.map((test) => test.label)).toEqual([ '1+6x', 'x+3', 'x+5', '1+x', 'x+2', 'x+4', '1+x+x^{2}', '1+6x+x^{2}', 'x^{2}+4x+3' ]);
-		expect(fourth.ok && fourth.tests.map((test) => test.label)).toEqual([ '1+6x', 'x+3', 'x+5', '1+x', 'x+2', 'x+4' ]);
-		expect(sixth.ok && sixth.tests.map((test) => test.label)).toEqual([ '1+2x', 'x+2', 'x+1', '1+x+x^{2}', '1+2x+x^{2}' ]);
 	});
 });

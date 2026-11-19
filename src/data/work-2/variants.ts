@@ -49,7 +49,7 @@ export const VARIANTS_2: Variant2Preset[] = [
 		minimal: { p: 7, period: '0,2,2,6,3,1' },
 		stream: { coefs: '1,0,1', init: INIT, encrypt: 'VIVEREESTCOGITARE', decrypt: 'EKYAJNRLG+JIXJ' },
 
-		/* На листе опечатка: g(x) = x⁴x + 1; в тетради — x⁴ + x + 1. */
+		/* Выданный лист и тетрадь: g(x) = x⁴ + x + 1. В архивном условии пропущен «+». */
 		field: { g: G_X4_X_1, beta: 'a^2+a' },
 	},
 	{

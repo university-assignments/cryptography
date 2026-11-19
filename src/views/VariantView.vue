@@ -5,7 +5,7 @@ import PhotoGallery from '@/components/PhotoGallery.vue';
 import TexMath from '@/components/TexMath.vue';
 import { type Photo, photosOf } from '@/data/work-1/photos';
 import { findVariant, type VariantPreset } from '@/data/work-1/variants';
-import { photosOf2 } from '@/data/work-2/photos';
+import { ISSUED_TASK_NUMBERS, issuedSheetOf, photosOf2 } from '@/data/work-2/photos';
 import {
 	type Variant2Preset,
 	findVariant2,
@@ -39,6 +39,7 @@ const preset2 = computed(() =>
 	return findVariant2(Number(props.variant));
 });
 const found = computed(() => isCustom.value || Boolean(preset.value ?? preset2.value));
+const issuedSheet = computed(() => preset2.value && issuedSheetOf(preset2.value.id));
 
 interface Group
 {
@@ -137,6 +138,30 @@ function summary2 (task: TaskDef, p: Variant2Preset): { tex: string; text: strin
 			</h1>
 		</div>
 
+		<section
+			v-if="issuedSheet"
+			class="space-y-2"
+			aria-labelledby="issued-sheet-title"
+		>
+			<h2
+				id="issued-sheet-title"
+				class="step-title"
+			>
+				Выданный лист заданий
+			</h2>
+			<PhotoGallery
+				:photos="[issuedSheet.photo]"
+				gallery-id="issued-sheet"
+				wide
+			/>
+			<p
+				v-if="issuedSheet.detail"
+				class="hint"
+			>
+				{{ issuedSheet.detail }}
+			</p>
+		</section>
+
 		<div
 			v-for="group in groups"
 			:key="group.part"
@@ -157,7 +182,7 @@ function summary2 (task: TaskDef, p: Variant2Preset): { tex: string; text: strin
 					class="card transition hover:border-amber-400 hover:shadow-md"
 				>
 					<p class="text-xs font-medium uppercase tracking-wide text-stone-500">
-						{{ group.part ? `Задание ${task.number}` : taskLabel(task) }}
+						{{ group.part ? `Задание ${task.number}` : taskLabel(task) }}<span v-if="issuedSheet"> · № {{ ISSUED_TASK_NUMBERS[task.id] }} на листе</span>
 					</p>
 					<h3 class="mt-1 font-semibold">
 						{{ task.title }}
