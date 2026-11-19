@@ -14,6 +14,7 @@ import {
 	generate,
 	linearDivisorWitness,
 	minimalRecurrence,
+	periodProduct,
 	seriesProduct,
 } from '../lrs';
 import {
@@ -24,8 +25,10 @@ import {
 	toDigits,
 } from '../lrs-cipher';
 import { chainProduct } from '../lrs-chain';
-import { recurrenceTex } from '../lrs-format';
-import { polyGcd, polyMul, polyTex } from '../poly';
+import { groupedPolynomialTex, recurrenceTex } from '../lrs-format';
+import {
+	polyAdd, polyGcd, polyMul, polyTex, trim,
+} from '../poly';
 
 describe('доступ к работе', () =>
 {
@@ -86,7 +89,12 @@ describe.each(VARIANTS_2.map((v) => [ v.id, v ] as const))('часть 1, вар
 		expect(polyMul(reducedNumerator, common, p)).toEqual(result.numerator);
 		expect(polyMul(reducedDenominator, common, p)).toEqual(result.g0);
 		expect(polyGcd(reducedNumerator, reducedDenominator, p)).toEqual([ 1 ]);
-		expect(seriesProduct(result.candidate, period, p).annihilating).toBe(true);
+		const series = seriesProduct(result.candidate, period, p);
+		const { first, carry } = periodProduct(result);
+
+		expect(series.annihilating).toBe(true);
+		expect(polyAdd(first, carry, p)).toEqual([]);
+		expect(trim(first, p)).toEqual(trim(series.head, p));
 	});
 
 	it('многочлена меньшей степени, аннулирующего последовательность, нет', () =>
@@ -146,6 +154,39 @@ describe('часть 1: проверка линейного делителя и 
 		expect(seriesProduct(result.candidate, period, p).annihilating).toBe(true);
 		expect(seriesProduct(insufficient, period, p).annihilating).toBe(false);
 		expect(generate(result.coefs, result.init, p, period.length * 2)).toEqual([ ...period, ...period ]);
+	});
+});
+
+describe('часть 1: раскрытое умножение производящего ряда', () =>
+{
+	it('в варианте 1 сдвиги дают 6x + x⁷, а в соседних блоках складываются 6 и 1', () =>
+	{
+		const result = minimalRecurrence([ 0, 2, 2, 6, 3, 1 ], 7);
+
+		if (!result.ok) throw new Error(result.error);
+
+		const { shifts, product, first, carry } = periodProduct(result);
+
+		expect(shifts).toEqual([
+			{ factor: [ 0, 0, 1 ], product: [ 0, 0, 0, 2, 2, 6, 3, 1 ] },
+			{ factor: [ 0, 4 ], product: [ 0, 0, 1, 1, 3, 5, 4 ] },
+			{ factor: [ 3 ], product: [ 0, 6, 6, 4, 2, 3 ] },
+		]);
+		expect(polyTex(product)).toBe('x^{7}+6x');
+		expect(groupedPolynomialTex(first.map((c, i) => [ c, carry[i] ?? 0 ]))).toBe('\\left(6+1\\right)x');
+	});
+
+	it('нулевой ряд аннулируется единицей и имеет порядок 0', () =>
+	{
+		const result = minimalRecurrence([ 0, 0, 0 ], 7);
+
+		if (!result.ok) throw new Error(result.error);
+
+		expect(result.numerator).toEqual([]);
+		expect(result.candidate).toEqual([ 1 ]);
+		expect(periodProduct(result).product).toEqual([]);
+		expect(result.coefs).toEqual([]);
+		expect(generate(result.coefs, result.init, result.p, 3)).toEqual([ 0, 0, 0 ]);
 	});
 });
 

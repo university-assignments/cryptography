@@ -70,6 +70,25 @@ export function ascendingTex (coefs: number[], variable = 'x'): string
 	return sum(coefs, coefs.map((_, i) => power(variable, i)));
 }
 
+/** Коэффициенты, сгруппированные по степеням до сложения, например (6+1)x. */
+export function groupedPolynomialTex (columns: number[][]): string
+{
+	const terms = columns.flatMap((addends, i) =>
+	{
+		const nonzero = addends.filter((value) => value !== 0);
+
+		if (nonzero.length === 0) return [];
+
+		const body = power('x', i);
+
+		return nonzero.length === 1
+			? term(nonzero[0]!, body)
+			: `\\left(${nonzero.join('+')}\\right)${body}`;
+	});
+
+	return terms.join('+') || '0';
+}
+
 /** Σ по m от 0 до ∞ (… + c·x^{Tm+shift+i} + …); нулевые слагаемые не пишутся. */
 export function seriesTex (values: number[], period: number, shift: number, variable = 'x'): string
 {

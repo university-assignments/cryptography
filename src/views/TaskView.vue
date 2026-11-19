@@ -81,7 +81,10 @@ const siblings = computed(() =>
 			<h1 class="text-2xl font-semibold tracking-tight">
 				{{ task.title }}
 			</h1>
-			<p class="note mt-1">
+			<p
+				v-if="task.slug !== 'lrs-minimal'"
+				class="note mt-1"
+			>
 				так помечены пояснения сайта — их не переписывают
 			</p>
 		</div>

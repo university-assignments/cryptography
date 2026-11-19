@@ -148,8 +148,6 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 	if (period.length === 0) return { ok: false, error: 'Введите период последовательности через запятую.' };
 	if (period.length > MAX_PERIOD) return { ok: false, error: `Период длиннее ${MAX_PERIOD} — слишком долго расписывать.` };
 	if (period.some((v) => !Number.isInteger(v) || v < 0 || v >= p)) return { ok: false, error: `Члены последовательности должны быть числами от 0 до ${p - 1}.` };
-	if (period.every((v) => v === 0)) return { ok: false, error: 'Нулевая последовательность: соотношение не требуется.' };
-
 	const t = period.length;
 	const g0 = trim([ 1, ...Array.from({ length: t - 1 }, () => 0), -1 ], p);
 	const numerator = trim(period, p);
@@ -185,6 +183,32 @@ export function minimalRecurrence (period: number[], p: number): MinimalResult
 		coefs: f.slice(0, k).map((v) => mod(-v, p)),
 		init: period.slice(0, k),
 	};
+}
+
+/** Один блок hₘᵢₙP и его перенос в следующий период. deg hₘᵢₙ ≤ T. */
+export function periodProduct ({ candidate, numerator, period, p }: MinimalRecurrence)
+{
+	const shifts: { factor: Poly; product: Poly }[] = [];
+
+	for (let i = degree(candidate); i >= 0; i--)
+	{
+		const coefficient = candidate[i]!;
+
+		if (coefficient === 0) continue;
+
+		const zeros = Array.from({ length: i }, () => 0);
+
+		shifts.push({
+			factor: [ ...zeros, coefficient ],
+			product: [ ...zeros, ...polyScale(numerator, coefficient, p) ],
+		});
+	}
+
+	const product = polyMul(candidate, numerator, p);
+	const first = product.slice(0, period.length);
+	const carry = product.slice(period.length);
+
+	return { shifts, product, first, carry };
 }
 
 interface LinearDivisorWitness

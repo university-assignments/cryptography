@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import FieldSelect from '@/components/FieldSelect.vue';
 import FieldText from '@/components/FieldText.vue';
+import LrsSeriesProduct from '@/components/tasks/LrsSeriesProduct.vue';
 import RegisterDiagram from '@/components/RegisterDiagram.vue';
 import ResetButton from '@/components/ResetButton.vue';
 import StepCard from '@/components/StepCard.vue';
@@ -14,12 +15,10 @@ import {
 	generate,
 	linearDivisorWitness,
 	minimalRecurrence,
-	seriesProduct,
 } from '@/lib/lrs';
 import {
 	ascendingTex,
 	initialTex,
-	periodicTex,
 	recurrenceTex,
 	relationTex,
 	seriesTex,
@@ -84,8 +83,7 @@ const linearCheck = computed(() =>
 	if (previous === 0)
 	{
 		return {
-			form: '1+ax',
-			normalization: 'свободный член',
+			form: 'q\\mid D\\ \\Rightarrow\\ q(0)\\ne 0,\\quad q(x)=1+ax',
 			start,
 			tex: `${coefficient}(1+ax)S(x)=${current}+a\\cdot 0=${current}\\ne 0`,
 		};
@@ -94,16 +92,14 @@ const linearCheck = computed(() =>
 	if (current === 0)
 	{
 		return {
-			form: 'x+a',
-			normalization: 'старший коэффициент',
+			form: 'q(x)=x+a',
 			start,
 			tex: `${coefficient}(x+a)S(x)=${previous}+a\\cdot 0=${previous}\\ne 0`,
 		};
 	}
 
 	return {
-		form: '1-x',
-		normalization: null,
+		form: '',
 		start,
 		tex: `${coefficient}(1-x)S(x)=${current}-${previous}\\equiv ${difference}\\not\\equiv 0\\pmod{${base.p}}`,
 	};
@@ -186,10 +182,23 @@ const check = computed(() =>
 			{{ result.error }}
 		</p>
 
-		<template v-if="solved">
-			<StepCard title="Период и производящая функция">
+		<StepCard
+			v-if="solved && solved.numerator.length === 0"
+			title="Умножение ряда"
+		>
+			<p class="tex-line">
+				<TexMath :tex="`S(x)=\\sum_{m=0}^{\\infty}0\\cdot x^{${solved.period.length}m}=0`" />
+				<TexMath tex="h_{\min}(x)=1,\quad \deg h_{\min}=0" />
+			</p>
+			<p class="tex-line answer">
+				<TexMath tex="h_{\min}(x)S(x)=1\cdot0=0,\quad s_n=0" />
+			</p>
+		</StepCard>
+
+		<template v-else-if="solved">
+			<StepCard title="Производящая функция">
 				<p class="tex-line">
-					<TexMath :tex="`\\mathbb{Z}_{${solved.p}},\\quad T=${solved.period.length},\\quad S=${periodicTex(solved.period)}`" />
+					<TexMath :tex="`\\mathbb{Z}_{${solved.p}},\\quad T=${solved.period.length}`" />
 				</p>
 				<p class="tex-line">
 					<TexMath :tex="`S(x)=${seriesTex(solved.period, solved.period.length, 0)}`" />
@@ -201,82 +210,53 @@ const check = computed(() =>
 				<p class="tex-line">
 					<TexMath :tex="`S(x)=P(x)(1+x^{${solved.period.length}}+x^{${2 * solved.period.length}}+\\dots)=\\frac{P(x)}{D(x)}`" />
 				</p>
-				<p class="text-sm">
-					Умножение на <TexMath tex="D(x)" /> оставляет только многочлен <TexMath tex="P(x)" />. Поэтому <TexMath tex="D(x)" /> аннулирует последовательность.
-				</p>
 			</StepCard>
 
-			<StepCard
-				v-if="linearCheck"
-				title="Проверка по коэффициенту ряда"
-			>
-				<p
-					v-if="linearCheck.normalization"
-					class="text-sm"
+			<StepCard title="Минимальный аннулирующий многочлен">
+				<div
+					v-if="linearCheck"
+					class="space-y-1 border-b border-stone-200 pb-3 dark:border-stone-800"
 				>
-					У линейного делителя <TexMath tex="D(x)" /> {{ linearCheck.normalization }} отличен от нуля, поэтому его можно привести к виду <TexMath :tex="linearCheck.form" />.
-				</p>
-				<p
-					v-else
-					class="text-sm"
-				>
-					Возьмём линейный делитель <TexMath tex="1-x" />. В произведении с <TexMath tex="S(x)" /> рассмотрим разность соседних членов периода.
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="linearCheck.tex" />
-					<TexMath :tex="linearCheck.start" />
-				</p>
-				<p class="text-sm">
-					<template v-if="linearCheck.normalization">
-						Коэффициент отличен от нуля при любом <TexMath tex="a" /> и повторяется бесконечно. Поэтому все линейные делители исключаются.
-					</template>
-					<template v-else>
-						Коэффициент повторяется бесконечно, поэтому произведение с <TexMath tex="1-x" /> не является многочленом. Для остальных делителей используем общий критерий.
-					</template>
-				</p>
-			</StepCard>
-
-			<StepCard title="Какие делители могут аннулировать последовательность">
-				<p class="text-sm">
-					Сократим дробь на наибольший общий делитель числителя и знаменателя.
-				</p>
-				<p
-					v-if="solved.factorization.complete && (solved.factorization.factors.length > 1 || solved.factorization.factors[0]!.power > 1)"
-					class="tex-line"
-				>
-					<TexMath
-						v-for="(stage, i) in solved.chain.stages.slice(0, -1)"
-						:key="i"
-						:tex="`${i === 0 ? 'D(x)=' : '='}${stage}`"
-					/>
-					<TexMath :tex="`${solved.chain.stages.length > 1 ? '=' : 'D(x)='}${factorizationTex(solved.factorization)}`" />
-				</p>
+					<p
+						v-if="linearCheck.form"
+						class="tex-line"
+					>
+						<span class="text-sm">Линейный делитель после нормировки</span>
+						<TexMath :tex="linearCheck.form" />
+					</p>
+					<p class="tex-line">
+						<TexMath :tex="linearCheck.tex" />
+						<TexMath :tex="linearCheck.start" />
+					</p>
+					<p class="text-sm">
+						<template v-if="linearCheck.form">
+							Хвост ненулевой при любом <TexMath tex="a" />. Линейные делители отпадают.
+						</template>
+						<template v-else>
+							Хвост ненулевой, поэтому <TexMath tex="1-x" /> отпадает.
+						</template>
+					</p>
+				</div>
 				<p class="tex-line">
 					<TexMath :tex="`C(x)=\\text{НОД}(D(x),P(x))=${polyTex(solved.common)}`" />
 				</p>
 				<p class="tex-line">
 					<TexMath :tex="`P_{*}(x)=P(x)/C(x)=${ascendingTex(solved.reducedNumerator)}`" />
-				</p>
-				<p class="tex-line">
 					<TexMath :tex="`D_{*}(x)=D(x)/C(x)=${polyTex(solved.reducedDenominator)}`" />
 				</p>
-				<p class="text-sm">
-					Многочлены <TexMath tex="P_{*}" /> и <TexMath tex="D_{*}" /> взаимно просты. Произведение <TexMath tex="qS=qP_{*}/D_{*}" /> является многочленом тогда и только тогда, когда <TexMath tex="D_{*}" /> делит <TexMath tex="q" />.
+				<p class="tex-line">
+					<TexMath tex="\gcd(P_{*},D_{*})=1" />
+					<TexMath :tex="`qS=\\frac{qP_{*}}{D_{*}}\\in\\mathbb{Z}_{${solved.p}}[x]\\quad\\Longleftrightarrow\\quad D_{*}\\mid q`" />
 				</p>
 				<p class="tex-line answer">
 					<TexMath :tex="`h_{\\min}(x)=${minimumTex},\\quad \\deg h_{\\min}=${degree(solved.candidate)}`" />
 				</p>
 				<p class="text-sm">
-					<TexMath tex="h_{\min}" /> получен из <TexMath tex="D_{*}" /> приведением старшего коэффициента к 1.
-					Все аннулирующие многочлены должны содержать его множители со всеми указанными кратностями. Поэтому исключаем все ненулевые многочлены степени меньше {{ degree(solved.candidate) }} и все делители степени {{ degree(solved.candidate) }} с недостаточной кратностью хотя бы одного из этих множителей.
-				</p>
-				<p class="tex-line">
-					<TexMath :tex="`h_{\\min}(x)S(x)=${ascendingTex(seriesProduct(solved.candidate, solved.period, solved.p).head)}`" />
-				</p>
-				<p class="text-sm">
-					Получился многочлен. Для аннулирующего <TexMath tex="q" /> с <TexMath tex="q(0)\ne 0" /> имеем <TexMath tex="\deg(qS)<\deg q" />, поскольку <TexMath tex="\deg P_{*}<\deg D_{*}" />. Приравнивая к нулю коэффициенты при <TexMath tex="x^{n+\deg q}" /> в <TexMath tex="qS" />, получаем соотношение порядка <TexMath tex="\deg q" />. И наоборот, соотношение порядка <TexMath tex="k" /> даёт аннулирующий многочлен степени не выше <TexMath tex="k" />.
+					Пропускаем степени меньше {{ degree(solved.candidate) }} и делители без всех множителей <TexMath tex="D_{*}" /> с нужными кратностями.
 				</p>
 			</StepCard>
+
+			<LrsSeriesProduct :solution="solved" />
 
 			<StepCard title="Характеристический многочлен и соотношение">
 				<p class="tex-line">
@@ -299,8 +279,8 @@ const check = computed(() =>
 					:coefs="solved.coefs"
 					:init="solved.init"
 				/>
-				<p class="note">
-					Проверка регистра даёт {{ check.join(', ') }}, …
+				<p class="seq">
+					Из регистра получаем {{ check.join(', ') }}, …
 				</p>
 			</StepCard>
 		</template>
